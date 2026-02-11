@@ -1,0 +1,48 @@
+_comment:
+- HSM CA backend via PKCS#11.
+- ''
+- Unlike pkcs11-hsm.json (which uses the 'internal' CA backend
+- with key_provider=pkcs11), this example uses the dedicated 'hsm'
+- CA backend that performs all signing operations directly through
+- the PKCS#11 interface.
+- ''
+- The HSM backend uses a session pool for concurrent signing and
+- supports RSA and ECDSA keys stored on the HSM.
+- ''
+- 'Requires: pip install python-pkcs11'
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+  workers: 4
+  worker_class: gthread
+database:
+  host: db.corp.internal
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+  sslmode: verify-full
+  max_connections: 20
+ca:
+  backend: hsm
+  default_validity_days: 90
+  max_validity_days: 397
+  hsm:
+    pkcs11_library: /usr/lib/softhsm/libsofthsm2.so
+    token_label: ACMEEH-CA
+    pin: ${HSM_PIN}
+    key_label: ca-signing-key
+    key_type: ec
+    hash_algorithm: sha256
+    issuer_cert_path: /etc/acmeeh/ca/issuer.pem
+    chain_path: /etc/acmeeh/ca/chain.pem
+    serial_source: database
+    login_required: true
+    session_pool_size: 4
+    session_pool_timeout_seconds: 30
+logging:
+  level: INFO
+  format: json
+  audit:
+    enabled: true
+    file: /var/log/acmeeh/audit.log
+    syslog: true

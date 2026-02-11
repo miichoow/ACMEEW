@@ -1,0 +1,1 @@
+Certificate revoked (serial {{ serial_number }})

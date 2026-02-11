@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Account Registered</h2>
+<p>A new ACME account has been registered.</p>
+<table>
+  <tr><td><strong>Account ID</strong></td><td>{{ account_id }}</td></tr>
+  <tr><td><strong>Contacts</strong></td><td>{{ contacts | join(', ') }}</td></tr>
+</table>
+<p><small>Registered at {{ server_url }} on {{ timestamp }}</small></p>
+</body>
+</html>

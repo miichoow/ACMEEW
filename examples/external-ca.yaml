@@ -1,0 +1,54 @@
+_comment:
+- Configuration using an external CA backend.
+- ACMEEH delegates certificate signing/revocation to a remote
+- signing service via HTTP API (e.g., HashiCorp Vault PKI,
+- EJBCA REST, or a custom CA microservice).
+- ''
+- The external CA is authenticated via mTLS (client certificate)
+- plus an Authorization header (e.g., Bearer token or API key).
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+  workers: 4
+database:
+  host: db.corp.internal
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+  sslmode: verify-full
+  max_connections: 20
+ca:
+  backend: external
+  default_validity_days: 90
+  max_validity_days: 397
+  external:
+    sign_url: https://vault.corp.internal:8200/v1/pki/sign/acme-role
+    revoke_url: https://vault.corp.internal:8200/v1/pki/revoke
+    auth_header: X-Vault-Token
+    auth_value: ${VAULT_TOKEN}
+    ca_cert_path: /etc/acmeeh/tls/vault-ca.pem
+    client_cert_path: /etc/acmeeh/tls/client.pem
+    client_key_path: /etc/acmeeh/tls/client-key.pem
+    timeout_seconds: 30
+  profiles:
+    default:
+      key_usages:
+      - digital_signature
+      - key_encipherment
+      extended_key_usages:
+      - server_auth
+challenges:
+  enabled:
+  - dns-01
+  dns01:
+    resolvers:
+    - 10.0.1.53
+    timeout_seconds: 60
+    propagation_wait_seconds: 20
+    max_retries: 10
+logging:
+  level: INFO
+  format: json
+  audit:
+    enabled: true
+    file: /var/log/acmeeh/audit.log

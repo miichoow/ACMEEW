@@ -1,0 +1,41 @@
+_comment:
+- Certificate Transparency logging enabled.
+- ''
+- When ct_logging.enabled is true, ACMEEH submits pre-certificates
+- or final certificates to the configured CT logs and embeds the
+- returned SCTs (Signed Certificate Timestamps) in the certificate.
+- ''
+- Each CT log entry requires a URL; the public_key_path is optional
+- and used to verify the SCT signature locally.
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+  workers: 4
+database:
+  host: db.corp.internal
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+  sslmode: verify-full
+  max_connections: 20
+ca:
+  backend: internal
+  default_validity_days: 90
+  max_validity_days: 397
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+    chain_path: /etc/acmeeh/ca/chain.pem
+    serial_source: database
+ct_logging:
+  enabled: true
+  submit_precert: true
+  logs:
+  - url: https://ct.corp.internal/ct/v1
+    public_key_path: /etc/acmeeh/ct/corp-ct-log.pub
+    timeout_seconds: 10
+  - url: https://ct-backup.corp.internal/ct/v1
+    timeout_seconds: 15
+logging:
+  level: INFO
+  format: json

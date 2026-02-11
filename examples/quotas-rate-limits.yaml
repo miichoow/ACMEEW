@@ -1,0 +1,54 @@
+_comment:
+- Quota and rate-limit tuning.
+- ''
+- 'Demonstrates every rate-limit sub-key plus the per-identifier'
+- 'limit and database-backed counters.  Also enables the account'
+- 'allowlist so only pre-approved accounts can issue certificates.'
+- ''
+- 'rate_limits.backend: "database" stores counters in PostgreSQL'
+- '  so limits are shared across all gunicorn workers.  Use "memory"'
+- '  (default) for single-worker or dev deployments.'
+- 'rate_limits.gc_*: Controls how often and how far back the'
+- '  expired rate-limit rows are cleaned up.'
+server:
+  external_url: https://acme.corp.internal
+  workers: 4
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+security:
+  rate_limits:
+    enabled: true
+    backend: database
+    new_account:
+      requests: 5
+      window_seconds: 3600
+    new_order:
+      requests: 50
+      window_seconds: 3600
+    new_order_per_identifier:
+      requests: 10
+      window_seconds: 3600
+    challenge:
+      requests: 20
+      window_seconds: 60
+    gc_interval_seconds: 600
+    gc_max_age_seconds: 7200
+  identifier_policy:
+    enforce_account_allowlist: true
+    allowed_domains:
+    - '*.corp.internal'
+    forbidden_domains:
+    - admin.corp.internal
+    allow_wildcards: true
+    allow_ip: false
+    max_identifiers_per_order: 25
+quotas:
+  enabled: true
+  max_certificates_per_account_per_day: 50
+  max_orders_per_account_per_day: 100

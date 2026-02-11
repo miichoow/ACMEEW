@@ -1,0 +1,75 @@
+_comment:
+- Demonstrates multiple CA certificate profiles.
+- ''
+- Profiles control key usage, extended key usage, and validity
+- periods for different certificate types. A 'default' profile is
+- always present (auto-created if not specified).
+- ''
+- Profile names are arbitrary strings. ACME clients can request
+- a specific profile during order creation.
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  backend: internal
+  default_validity_days: 90
+  max_validity_days: 730
+  profiles:
+    default:
+      key_usages:
+      - digital_signature
+      - key_encipherment
+      extended_key_usages:
+      - server_auth
+      validity_days: 90
+      max_validity_days: 397
+    web-server:
+      key_usages:
+      - digital_signature
+      - key_encipherment
+      extended_key_usages:
+      - server_auth
+      validity_days: 90
+      max_validity_days: 397
+    client-auth:
+      key_usages:
+      - digital_signature
+      extended_key_usages:
+      - client_auth
+      validity_days: 365
+      max_validity_days: 730
+    dual-purpose:
+      key_usages:
+      - digital_signature
+      - key_encipherment
+      extended_key_usages:
+      - server_auth
+      - client_auth
+      validity_days: 180
+      max_validity_days: 365
+    code-signing:
+      key_usages:
+      - digital_signature
+      extended_key_usages:
+      - code_signing
+      validity_days: 365
+      max_validity_days: 730
+    short-lived:
+      key_usages:
+      - digital_signature
+      extended_key_usages:
+      - server_auth
+      validity_days: 1
+      max_validity_days: 7
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+    chain_path: /etc/acmeeh/ca/chain.pem
+    serial_source: database
+logging:
+  level: INFO
+  format: json

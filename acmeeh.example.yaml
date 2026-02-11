@@ -1,0 +1,181 @@
+server:
+  external_url: https://acme.corp.internal
+  bind: 0.0.0.0
+  port: 8443
+  workers: 4
+  worker_class: sync
+  timeout: 30
+  graceful_timeout: 30
+  keepalive: 2
+  max_requests: 10000
+  max_requests_jitter: 1000
+proxy:
+  enabled: true
+  trusted_proxies:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  forwarded_for_header: X-Forwarded-For
+  forwarded_proto_header: X-Forwarded-Proto
+security:
+  hsts_max_age_seconds: 63072000
+  allowed_algorithms:
+  - ES256
+  - RS256
+  min_rsa_key_size: 2048
+  allowed_ec_curves:
+  - P-256
+  - P-384
+  rate_limits:
+    enabled: true
+    new_account:
+      requests: 10
+      window_seconds: 3600
+    new_order:
+      requests: 300
+      window_seconds: 3600
+    challenge:
+      requests: 60
+      window_seconds: 60
+  identifier_policy:
+    allowed_domains:
+    - '*.corp.internal'
+    - '*.staging.internal'
+    forbidden_domains: []
+    allow_wildcards: true
+    allow_ip: false
+    max_identifiers_per_order: 100
+    max_identifier_value_length: 253
+acme:
+  paths:
+    directory: /directory
+    new_nonce: /new-nonce
+    new_account: /new-account
+    new_order: /new-order
+    new_authz: /new-authz
+    revoke_cert: /revoke-cert
+    key_change: /key-change
+  website_url: https://pki.corp.internal
+  caa_identities:
+  - acme.corp.internal
+  eab_required: false
+  eab_reusable: false
+  orders_page_size: 50
+api:
+  base_path: /acme
+challenges:
+  enabled:
+  - http-01
+  - dns-01
+  retry_after_seconds: 3
+  backoff_base_seconds: 5
+  backoff_max_seconds: 300
+  http01:
+    port: 80
+    timeout_seconds: 10
+    max_retries: 3
+    auto_validate: true
+    max_response_bytes: 1048576
+  dns01:
+    resolvers:
+    - 10.0.1.53
+    - 10.0.2.53
+    timeout_seconds: 30
+    propagation_wait_seconds: 10
+    max_retries: 5
+    auto_validate: false
+  tlsalpn01:
+    port: 443
+    timeout_seconds: 10
+    auto_validate: true
+ca:
+  backend: internal
+  default_validity_days: 90
+  max_validity_days: 397
+  profiles:
+    default:
+      key_usages:
+      - digital_signature
+      - key_encipherment
+      extended_key_usages:
+      - server_auth
+    client:
+      key_usages:
+      - digital_signature
+      extended_key_usages:
+      - client_auth
+      validity_days: 365
+      max_validity_days: 730
+  circuit_breaker_failure_threshold: 5
+  circuit_breaker_recovery_timeout: 30.0
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+    key_provider: file
+    chain_path: /etc/acmeeh/ca/chain.pem
+    serial_source: database
+dns:
+  resolvers:
+  - 10.0.1.53
+  - 10.0.2.53
+  timeout_seconds: 10
+  retries: 3
+email:
+  require_contact: false
+  allowed_domains:
+  - corp.internal
+  validate_mx: false
+smtp:
+  enabled: false
+  host: smtp.corp.internal
+  port: 587
+  username: ''
+  password: ${SMTP_PASSWORD:-}
+  use_tls: true
+  from_address: acmeeh@corp.internal
+  templates_path: null
+notifications:
+  enabled: true
+  max_retries: 3
+  retry_delay_seconds: 60
+  batch_size: 50
+  retry_interval_seconds: 300
+logging:
+  level: INFO
+  format: json
+  audit:
+    enabled: true
+    file: /var/log/acmeeh/audit.log
+    syslog: false
+    max_file_size_bytes: 104857600
+    backup_count: 10
+database:
+  host: db.corp.internal
+  port: 5432
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+  sslmode: verify-full
+  min_connections: 2
+  max_connections: 20
+  connection_timeout: 30.0
+  auto_setup: false
+hooks:
+  timeout_seconds: 30
+  max_workers: 4
+  registered: []
+nonce:
+  expiry_seconds: 3600
+  gc_interval_seconds: 300
+  length: 32
+order:
+  expiry_seconds: 604800
+  authorization_expiry_seconds: 2592000
+  cleanup_interval_seconds: 3600
+  retry_after_seconds: 3
+quotas:
+  enabled: false
+  max_certificates_per_account_per_day: 0
+  max_orders_per_account_per_day: 0
+tos:
+  url: https://pki.corp.internal/tos
+  require_agreement: true

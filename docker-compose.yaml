@@ -1,0 +1,88 @@
+services:
+  acmeeh:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_HSM: ${INSTALL_HSM:-0}
+        INSTALL_GEVENT: ${INSTALL_GEVENT:-0}
+        EXTRA_PIP_PACKAGES: ${EXTRA_PIP_PACKAGES:-}
+        ACMEEH_UID: ${ACMEEH_UID:-1000}
+        ACMEEH_GID: ${ACMEEH_GID:-1000}
+    environment:
+      # PostgreSQL
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-acmeeh}
+      POSTGRES_USER: ${POSTGRES_USER:-acmeeh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_SSLMODE: ${POSTGRES_SSLMODE:-disable}
+      # Server
+      ACMEEH_EXTERNAL_URL: ${ACMEEH_EXTERNAL_URL:-https://acmeeh:8443}
+      ACMEEH_BIND: ${ACMEEH_BIND:-0.0.0.0}
+      ACMEEH_BASE_PATH: ${ACMEEH_BASE_PATH:-}
+      # CA
+      CA_BACKEND: ${CA_BACKEND:-internal}
+      CA_ROOT_CERT_PATH: ${CA_ROOT_CERT_PATH:-/app/certs/root.pem}
+      CA_ROOT_KEY_PATH: ${CA_ROOT_KEY_PATH:-/app/certs/root-key.pem}
+      CA_KEY_PROVIDER: ${CA_KEY_PROVIDER:-file}
+      CA_SERIAL_SOURCE: ${CA_SERIAL_SOURCE:-database}
+      CA_HASH_ALGORITHM: ${CA_HASH_ALGORITHM:-sha256}
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-human}
+      AUDIT_LOG_FILE: ${AUDIT_LOG_FILE:-/var/log/acmeeh/audit.log}
+      # Admin
+      ADMIN_TOKEN_SECRET: ${ADMIN_TOKEN_SECRET:-}
+      ADMIN_INITIAL_EMAIL: ${ADMIN_INITIAL_EMAIL:-}
+      # SMTP
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    ports:
+      - "${ACMEEH_PORT:-8443}:8443"
+    volumes:
+      - ./docker/config.yaml:/app/config.yaml:ro
+      - ${ACMEEH_CERTS_DIR:-./certs}:/app/certs:ro
+      - acmeeh-logs:/var/log/acmeeh
+      - acmeeh-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8443/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    stop_grace_period: 35s
+    restart: unless-stopped
+    networks:
+      - acmeeh-net
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-acmeeh}
+      POSTGRES_USER: ${POSTGRES_USER:-acmeeh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - acmeeh-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-acmeeh} -d ${POSTGRES_DB:-acmeeh}"]
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - acmeeh-net
+
+volumes:
+  acmeeh-pgdata:
+  acmeeh-logs:
+  acmeeh-data:
+
+networks:
+  acmeeh-net:
+    driver: bridge

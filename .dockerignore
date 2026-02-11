@@ -1,0 +1,49 @@
+# Version control
+.git
+.gitignore
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing & quality
+tests/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Development
+dev/
+client/
+docs/
+examples/
+
+# Environment & secrets
+.env
+.env.*
+!docker/.env.example
+
+# Documentation
+*.md
+LICENSE
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Docker compose (not needed inside image)
+docker-compose.yaml

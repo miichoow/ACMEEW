@@ -1,0 +1,53 @@
+_comment:
+- Background workers for challenge validation, expiration warnings,
+- and stale-order detection.
+- ''
+- 'challenges.background_worker: A polling worker that picks up'
+- '  PENDING challenges and validates them in the background instead'
+- '  of inline during the HTTP request.'
+- 'notifications.expiration_warning_days: Days-before-expiry at'
+- '  which warning notifications are sent to account contacts.'
+- 'order.stale_processing_threshold_seconds: Orders stuck in'
+- '  PROCESSING longer than this are reset so they can be retried.'
+server:
+  external_url: https://acme.corp.internal
+  workers: 4
+  worker_class: gthread
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+challenges:
+  enabled:
+  - http-01
+  - dns-01
+  background_worker:
+    enabled: true
+    poll_seconds: 5
+    stale_seconds: 120
+notifications:
+  enabled: true
+  expiration_warning_days:
+  - 30
+  - 14
+  - 7
+  - 1
+  expiration_check_interval_seconds: 3600
+  max_retries: 5
+  retry_delay_seconds: 120
+  batch_size: 100
+order:
+  stale_processing_threshold_seconds: 300
+  cleanup_interval_seconds: 1800
+smtp:
+  enabled: true
+  host: smtp.corp.internal
+  port: 587
+  username: acmeeh-noreply
+  password: ${SMTP_PASSWORD}
+  use_tls: true
+  from_address: acmeeh@corp.internal

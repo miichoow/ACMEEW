@@ -1,0 +1,36 @@
+_comment:
+- Retention and cleanup configuration.
+- ''
+- 'Three complementary cleanup mechanisms:'
+- '  retention:       Purges expired/invalid orders, authorizations,'
+- '                   challenges, and old expiration notices.'
+- '  audit_retention: Purges old audit log rows from the database.'
+- '  order.cleanup_interval_seconds: How often the order cleanup'
+- '                   worker runs (separate from retention).'
+server:
+  external_url: https://acme.corp.internal
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+retention:
+  enabled: true
+  invalid_order_max_age_days: 14
+  expired_authz_max_age_days: 14
+  invalid_challenge_max_age_days: 7
+  expiration_notice_max_age_days: 60
+  cleanup_interval_seconds: 43200
+  cleanup_loop_interval_seconds: 30
+audit_retention:
+  enabled: true
+  max_age_days: 180
+  cleanup_interval_seconds: 86400
+order:
+  expiry_seconds: 604800
+  authorization_expiry_seconds: 2592000
+  cleanup_interval_seconds: 1800
+  stale_processing_threshold_seconds: 300

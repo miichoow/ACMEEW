@@ -1,0 +1,39 @@
+_comment:
+- High-concurrency deployment using gevent async workers.
+- ''
+- 'worker_class options:'
+- '  - ''sync''    — standard synchronous workers (default)'
+- '  - ''gthread'' — threaded workers (good for I/O-bound workloads)'
+- '  - ''gevent''  — async workers via gevent (highest concurrency)'
+- ''
+- With gevent, each worker handles many concurrent connections,
+- so fewer workers + higher max_connections is the pattern.
+- 'Requires: pip install gevent'
+server:
+  external_url: https://acme.corp.internal
+  bind: 0.0.0.0
+  port: 8443
+  workers: 2
+  worker_class: gevent
+  timeout: 60
+  graceful_timeout: 60
+  keepalive: 5
+  max_requests: 50000
+  max_requests_jitter: 5000
+database:
+  host: db.corp.internal
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+  sslmode: require
+  min_connections: 5
+  max_connections: 50
+  connection_timeout: 15.0
+ca:
+  backend: internal
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+logging:
+  level: INFO
+  format: json

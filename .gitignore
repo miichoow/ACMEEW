@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environment
+.venv/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ACMEEH dev artifacts
+.lego/
+dev/tls/
+dev/ca/*.srl
+config.dev.json
+config.dev.yaml
+*.log
+
+# Docker
+certs/
+
+# Secrets
+.env
+.env.*
+*.key
+
+# Linters / type checkers
+.mypy_cache/
+.ruff_cache/

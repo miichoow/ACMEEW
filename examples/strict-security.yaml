@@ -1,0 +1,93 @@
+_comment:
+- Maximum security hardening.
+- '- Only ECDSA algorithms (no RSA at all)'
+- '- P-384 and P-521 curves only (no P-256)'
+- '- Tight rate limits'
+- '- Strict domain allow-list with explicit forbidden domains'
+- '- No wildcards allowed'
+- '- No IP-based identifiers'
+- '- EAB required (pre-authorized accounts only)'
+- '- TOS must be agreed to'
+- '- Contact email mandatory with MX validation'
+- '- Database connection over TLS with full verification'
+server:
+  external_url: https://acme.secure.internal
+  port: 8443
+  workers: 4
+  timeout: 15
+security:
+  hsts_max_age_seconds: 63072000
+  allowed_algorithms:
+  - ES384
+  - ES512
+  min_rsa_key_size: 4096
+  allowed_ec_curves:
+  - P-384
+  - P-521
+  rate_limits:
+    enabled: true
+    new_account:
+      requests: 3
+      window_seconds: 3600
+    new_order:
+      requests: 20
+      window_seconds: 3600
+    challenge:
+      requests: 10
+      window_seconds: 60
+  identifier_policy:
+    allowed_domains:
+    - '*.secure.internal'
+    forbidden_domains:
+    - admin.secure.internal
+    - vault.secure.internal
+    - '*.dev.secure.internal'
+    allow_wildcards: false
+    allow_ip: false
+    max_identifiers_per_order: 10
+acme:
+  eab_required: true
+  eab_reusable: false
+  caa_identities:
+  - acme.secure.internal
+database:
+  host: db.secure.internal
+  database: acmeeh
+  user: acmeeh_app
+  password: ${DB_PASSWORD}
+  sslmode: verify-full
+  max_connections: 15
+ca:
+  backend: internal
+  default_validity_days: 30
+  max_validity_days: 90
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+    key_provider: pkcs11
+    chain_path: /etc/acmeeh/ca/chain.pem
+    serial_source: database
+email:
+  require_contact: true
+  allowed_domains:
+  - secure.internal
+  validate_mx: true
+dns:
+  resolvers:
+  - 10.10.0.53
+  timeout_seconds: 5
+  retries: 2
+tos:
+  url: https://pki.secure.internal/tos
+  require_agreement: true
+nonce:
+  expiry_seconds: 900
+  gc_interval_seconds: 120
+  length: 64
+logging:
+  level: INFO
+  format: json
+  audit:
+    enabled: true
+    file: /var/log/acmeeh/audit.log
+    syslog: true

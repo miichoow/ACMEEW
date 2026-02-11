@@ -1,0 +1,86 @@
+_comment:
+- Demonstrates lifecycle hooks with all available events.
+- ''
+- 'Hook events:'
+- '  - account.registration     — new account created'
+- '  - order.creation           — new order placed'
+- '  - challenge.before_validate — about to run challenge validation'
+- '  - challenge.after_validate  — challenge validation succeeded'
+- '  - challenge.on_failure      — challenge validation failed'
+- '  - challenge.on_retry        — challenge validation being retried'
+- '  - certificate.issuance      — certificate signed and stored'
+- '  - certificate.revocation    — certificate revoked'
+- '  - certificate.delivery      — certificate downloaded by client'
+- ''
+- Each hook is a Python class (fully qualified path).
+- Hooks run fire-and-forget via a ThreadPoolExecutor.
+- Per-hook config is passed as a dict to the hook constructor.
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+  workers: 4
+  timeout: 30
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  backend: internal
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+hooks:
+  timeout_seconds: 20
+  max_workers: 8
+  registered:
+  - _comment: Send Slack alerts for certificate lifecycle events
+    class: mycompany.hooks.SlackNotifier
+    enabled: true
+    events:
+    - certificate.issuance
+    - certificate.revocation
+    timeout_seconds: 10
+    config:
+      webhook_url: ${SLACK_WEBHOOK_URL}
+      channel: '#pki-alerts'
+      mention_on_revocation: '@oncall-security'
+  - _comment: Write audit records to an external SIEM
+    class: mycompany.hooks.SiemExporter
+    enabled: true
+    events:
+    - account.registration
+    - order.creation
+    - certificate.issuance
+    - certificate.revocation
+    config:
+      siem_url: https://siem.corp.internal/api/ingest
+      api_key: ${SIEM_API_KEY}
+  - _comment: Auto-deploy certificates to a load balancer
+    class: mycompany.hooks.LBDeployer
+    enabled: true
+    events:
+    - certificate.issuance
+    timeout_seconds: 30
+    config:
+      lb_api_url: https://lb.corp.internal/api/v1/certs
+      lb_api_token: ${LB_API_TOKEN}
+  - _comment: Log challenge outcomes for debugging
+    class: mycompany.hooks.ChallengeLogger
+    enabled: true
+    events:
+    - challenge.before_validate
+    - challenge.after_validate
+    - challenge.on_failure
+    - challenge.on_retry
+    config:
+      log_path: /var/log/acmeeh/challenge-debug.jsonl
+  - _comment: Track certificate downloads
+    class: mycompany.hooks.DeliveryTracker
+    enabled: false
+    events:
+    - certificate.delivery
+    config:
+      metrics_endpoint: https://metrics.corp.internal/push
+logging:
+  level: INFO
+  format: json

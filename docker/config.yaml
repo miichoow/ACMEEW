@@ -1,0 +1,289 @@
+# ACMEEH Docker Configuration
+#
+# String fields use ${VAR:-default} for env var substitution.
+# Non-string fields (int, bool, float) must be native YAML values —
+# ACMEEH's env var resolver produces strings, which would fail schema
+# validation for typed fields. Adjust these directly or override the
+# entire config file via a bind mount.
+
+# ── Server ────────────────────────────────────────────────────────────
+server:
+  external_url: ${ACMEEH_EXTERNAL_URL:-https://acmeeh:8443}
+  bind: ${ACMEEH_BIND:-0.0.0.0}
+  port: 8443
+  workers: 2
+  worker_class: gthread
+  timeout: 30
+  graceful_timeout: 30
+  keepalive: 2
+  max_requests: 1000
+  max_requests_jitter: 50
+
+# ── Reverse Proxy ─────────────────────────────────────────────────────
+proxy:
+  enabled: false
+  trusted_proxies: []
+  forwarded_for_header: ${ACMEEH_FORWARDED_FOR_HEADER:-X-Forwarded-For}
+  forwarded_proto_header: ${ACMEEH_FORWARDED_PROTO_HEADER:-X-Forwarded-Proto}
+
+# ── Database ──────────────────────────────────────────────────────────
+database:
+  host: ${POSTGRES_HOST:-postgres}
+  port: 5432
+  database: ${POSTGRES_DB:-acmeeh}
+  user: ${POSTGRES_USER:-acmeeh}
+  password: ${POSTGRES_PASSWORD}
+  sslmode: ${POSTGRES_SSLMODE:-disable}
+  min_connections: 2
+  max_connections: 10
+  connection_timeout: 30.0
+  auto_setup: true
+
+# ── CA ────────────────────────────────────────────────────────────────
+ca:
+  backend: ${CA_BACKEND:-internal}
+  default_validity_days: 90
+  max_validity_days: 397
+  circuit_breaker_failure_threshold: 5
+  circuit_breaker_recovery_timeout: 30.0
+
+  internal:
+    root_cert_path: ${CA_ROOT_CERT_PATH:-/app/certs/root.pem}
+    root_key_path: ${CA_ROOT_KEY_PATH:-/app/certs/root-key.pem}
+    key_provider: ${CA_KEY_PROVIDER:-file}
+    serial_source: ${CA_SERIAL_SOURCE:-database}
+    hash_algorithm: ${CA_HASH_ALGORITHM:-sha256}
+
+  external:
+    sign_url: ${CA_EXT_SIGN_URL:-}
+    revoke_url: ${CA_EXT_REVOKE_URL:-}
+    auth_header: ${CA_EXT_AUTH_HEADER:-Authorization}
+    auth_value: ${CA_EXT_AUTH_VALUE:-}
+    timeout_seconds: 30
+    max_retries: 0
+    retry_delay_seconds: 1.0
+
+  acme_proxy:
+    directory_url: ${CA_PROXY_DIRECTORY_URL:-}
+    email: ${CA_PROXY_EMAIL:-}
+    storage_path: ${CA_PROXY_STORAGE_PATH:-/app/data/acme_proxy_storage}
+    challenge_type: ${CA_PROXY_CHALLENGE_TYPE:-dns-01}
+    challenge_handler: ${CA_PROXY_CHALLENGE_HANDLER:-}
+    verify_ssl: true
+    timeout_seconds: 300
+
+  hsm:
+    pkcs11_library: ${HSM_PKCS11_LIBRARY:-/usr/lib/softhsm/libsofthsm2.so}
+    token_label: ${HSM_TOKEN_LABEL:-acmeeh}
+    pin: ${HSM_PIN:-}
+    key_label: ${HSM_KEY_LABEL:-acmeeh-signing}
+    key_type: ${HSM_KEY_TYPE:-ec}
+    hash_algorithm: ${HSM_HASH_ALGORITHM:-sha256}
+    issuer_cert_path: ${HSM_ISSUER_CERT_PATH:-/app/certs/issuer.pem}
+    serial_source: ${HSM_SERIAL_SOURCE:-database}
+    login_required: true
+    session_pool_size: 4
+    session_pool_timeout_seconds: 30
+
+# ── Challenges ────────────────────────────────────────────────────────
+challenges:
+  enabled:
+    - http-01
+  auto_validate: true
+  retry_after_seconds: 3
+  backoff_base_seconds: 5
+  backoff_max_seconds: 300
+
+  http01:
+    port: 80
+    timeout_seconds: 15
+    max_retries: 3
+    auto_validate: true
+    max_response_bytes: 1048576
+
+  dns01:
+    timeout_seconds: 30
+    propagation_wait_seconds: 10
+    max_retries: 5
+    auto_validate: false
+    require_dnssec: false
+    require_authoritative: false
+
+  tlsalpn01:
+    port: 443
+    timeout_seconds: 10
+    max_retries: 3
+    auto_validate: true
+
+  background_worker:
+    enabled: false
+    poll_seconds: 10
+    stale_seconds: 300
+
+# ── Security ──────────────────────────────────────────────────────────
+security:
+  allowed_algorithms:
+    - ES256
+    - RS256
+  min_rsa_key_size: 2048
+  max_rsa_key_size: 8192
+  allowed_ec_curves:
+    - P-256
+    - P-384
+  max_request_body_bytes: 65536
+  hsts_max_age_seconds: 63072000
+
+  rate_limits:
+    enabled: true
+    backend: ${RATE_LIMIT_BACKEND:-memory}
+
+  identifier_policy:
+    allow_wildcards: true
+    allow_ip: false
+    max_identifiers_per_order: 100
+    enforce_account_allowlist: false
+
+# ── ACME Protocol ─────────────────────────────────────────────────────
+acme:
+  eab_required: false
+  eab_reusable: false
+  caa_enforce: true
+  orders_page_size: 50
+
+# ── API ───────────────────────────────────────────────────────────────
+api:
+  base_path: ${ACMEEH_BASE_PATH:-}
+
+# ── Nonce ─────────────────────────────────────────────────────────────
+nonce:
+  expiry_seconds: 3600
+  gc_interval_seconds: 300
+  length: 32
+
+# ── Order ─────────────────────────────────────────────────────────────
+order:
+  expiry_seconds: 604800
+  authorization_expiry_seconds: 2592000
+  cleanup_interval_seconds: 3600
+  stale_processing_threshold_seconds: 600
+  retry_after_seconds: 3
+
+# ── DNS ───────────────────────────────────────────────────────────────
+dns:
+  timeout_seconds: 10
+  retries: 3
+
+# ── Email ─────────────────────────────────────────────────────────────
+email:
+  require_contact: false
+  validate_mx: false
+
+# ── Account ───────────────────────────────────────────────────────────
+account:
+  allow_contact_update: true
+  allow_deactivation: true
+
+# ── Logging ───────────────────────────────────────────────────────────
+logging:
+  level: ${LOG_LEVEL:-INFO}
+  format: ${LOG_FORMAT:-human}
+  audit:
+    enabled: true
+    file: ${AUDIT_LOG_FILE:-/var/log/acmeeh/audit.log}
+
+# ── SMTP ──────────────────────────────────────────────────────────────
+smtp:
+  enabled: false
+  host: ${SMTP_HOST:-}
+  port: 587
+  username: ${SMTP_USERNAME:-}
+  password: ${SMTP_PASSWORD:-}
+  use_tls: true
+  from_address: ${SMTP_FROM:-}
+  timeout_seconds: 30
+
+# ── Notifications ─────────────────────────────────────────────────────
+notifications:
+  enabled: true
+  max_retries: 3
+  retry_delay_seconds: 60
+  batch_size: 50
+  expiration_warning_days:
+    - 30
+    - 14
+    - 7
+    - 1
+
+# ── Quotas ────────────────────────────────────────────────────────────
+quotas:
+  enabled: false
+
+# ── TOS ───────────────────────────────────────────────────────────────
+tos:
+  url: ${TOS_URL:-}
+  require_agreement: false
+
+# ── Hooks ─────────────────────────────────────────────────────────────
+hooks:
+  timeout_seconds: 30
+  max_workers: 4
+  max_retries: 0
+
+# ── Admin API ─────────────────────────────────────────────────────────
+admin_api:
+  enabled: false
+  base_path: ${ADMIN_BASE_PATH:-/api}
+  token_secret: ${ADMIN_TOKEN_SECRET:-}
+  token_expiry_seconds: 3600
+  initial_admin_email: ${ADMIN_INITIAL_EMAIL:-}
+
+# ── CRL ───────────────────────────────────────────────────────────────
+crl:
+  enabled: false
+  path: ${CRL_PATH:-/crl}
+  rebuild_interval_seconds: 3600
+  next_update_seconds: 86400
+  hash_algorithm: sha256
+
+# ── OCSP ──────────────────────────────────────────────────────────────
+ocsp:
+  enabled: false
+  path: ${OCSP_PATH:-/ocsp}
+  response_validity_seconds: 86400
+  hash_algorithm: sha256
+
+# ── ARI (ACME Renewal Information) ───────────────────────────────────
+ari:
+  enabled: false
+  renewal_percentage: 0.6667
+  path: ${ARI_PATH:-/renewalInfo}
+
+# ── Metrics ───────────────────────────────────────────────────────────
+metrics:
+  enabled: false
+  path: ${METRICS_PATH:-/metrics}
+  auth_required: false
+
+# ── CT Logging ────────────────────────────────────────────────────────
+ct_logging:
+  enabled: false
+
+# ── Audit Retention ──────────────────────────────────────────────────
+audit_retention:
+  enabled: false
+  max_age_days: 90
+  cleanup_interval_seconds: 86400
+
+# ── Audit Export ──────────────────────────────────────────────────────
+audit_export:
+  webhook_url: ${AUDIT_WEBHOOK_URL:-}
+  syslog_host: ${AUDIT_SYSLOG_HOST:-}
+  syslog_port: 514
+
+# ── Data Retention ───────────────────────────────────────────────────
+retention:
+  enabled: true
+  invalid_order_max_age_days: 30
+  expired_authz_max_age_days: 30
+  invalid_challenge_max_age_days: 30
+  cleanup_interval_seconds: 86400

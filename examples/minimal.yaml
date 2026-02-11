@@ -1,0 +1,18 @@
+_comment:
+- Minimal configuration — only the two required sections.
+- 'Everything else uses defaults: http-01 challenge, internal CA,'
+- no proxy, no email, no hooks, no TOS enforcement.
+- ''
+- You MUST still provide CA root cert/key paths if using the
+- default 'internal' CA backend.
+server:
+  external_url: https://acme.example.com
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+  auto_setup: true
+ca:
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem

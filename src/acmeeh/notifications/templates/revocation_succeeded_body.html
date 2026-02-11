@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Certificate Revoked</h2>
+<p>A certificate has been revoked.</p>
+<table>
+  <tr><td><strong>Serial Number</strong></td><td>{{ serial_number }}</td></tr>
+  <tr><td><strong>Domains</strong></td><td>{{ domains | join(', ') }}</td></tr>
+  <tr><td><strong>Reason</strong></td><td>{{ reason }}</td></tr>
+</table>
+<p><small>Revoked via {{ server_url }} at {{ timestamp }}</small></p>
+</body>
+</html>

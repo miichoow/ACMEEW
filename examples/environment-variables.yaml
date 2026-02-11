@@ -1,0 +1,36 @@
+_comment:
+- Demonstrates environment variable substitution patterns.
+- ''
+- ACMEEH resolves ${VAR} and ${VAR:-default} in all string
+- values at config load time. This keeps secrets out of the
+- config file itself.
+- ''
+- '  ${VAR}          — required, fails if VAR is not set'
+- '  ${VAR:-default} — uses ''default'' if VAR is not set'
+- '  ${VAR:-}        — uses empty string if VAR is not set'
+server:
+  external_url: ${ACMEEH_EXTERNAL_URL:-https://localhost:8443}
+  bind: ${ACMEEH_BIND:-0.0.0.0}
+  port: 8443
+database:
+  host: ${DB_HOST:-localhost}
+  port: 5432
+  database: ${DB_NAME:-acmeeh}
+  user: ${DB_USER:-acmeeh}
+  password: ${DB_PASSWORD}
+  sslmode: ${DB_SSLMODE:-prefer}
+ca:
+  backend: internal
+  internal:
+    root_cert_path: ${CA_ROOT_CERT_PATH:-/etc/acmeeh/ca/root.pem}
+    root_key_path: ${CA_ROOT_KEY_PATH:-/etc/acmeeh/ca/root-key.pem}
+smtp:
+  enabled: true
+  host: ${SMTP_HOST}
+  port: 587
+  username: ${SMTP_USER:-}
+  password: ${SMTP_PASSWORD:-}
+  from_address: ${SMTP_FROM:-acmeeh@corp.internal}
+logging:
+  level: ${LOG_LEVEL:-INFO}
+  format: json

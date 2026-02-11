@@ -1,0 +1,36 @@
+_comment:
+- Prometheus metrics endpoint enabled.
+- ''
+- Exposes /metrics for Prometheus scraping. Pair with a production
+- setup (multiple workers, JSON logging, reverse proxy) so the
+- metrics endpoint is protected behind your proxy's auth layer.
+server:
+  external_url: https://acme.corp.internal
+  bind: 0.0.0.0
+  port: 8443
+  workers: 4
+  worker_class: gthread
+  timeout: 30
+proxy:
+  enabled: true
+  trusted_proxies:
+  - 10.0.0.0/8
+metrics:
+  enabled: true
+  path: /metrics
+  auth_required: true
+database:
+  host: db.corp.internal
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+  sslmode: verify-full
+  max_connections: 20
+ca:
+  backend: internal
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+logging:
+  level: INFO
+  format: json

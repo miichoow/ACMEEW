@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Account Registration Failed</h2>
+<p>An error occurred during ACME account registration.</p>
+<table>
+  <tr><td><strong>Contacts</strong></td><td>{{ contacts | join(', ') }}</td></tr>
+  <tr><td><strong>Error</strong></td><td>{{ error_detail }}</td></tr>
+</table>
+<p><small>Reported by {{ server_url }} at {{ timestamp }}</small></p>
+</body>
+</html>

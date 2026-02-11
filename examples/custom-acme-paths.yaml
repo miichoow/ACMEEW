@@ -1,0 +1,42 @@
+_comment:
+- Custom ACME endpoint paths.
+- ''
+- By default, ACME endpoints use RFC 8555 conventional paths
+- like /directory, /new-nonce, etc. You can remap them for
+- compatibility with specific clients or to avoid path conflicts
+- when co-hosting with other services.
+- ''
+- 'Combined with api.base_path, the full URL becomes:'
+- '  {external_url}{base_path}{path}'
+- '  e.g., https://acme.corp.internal/pki/v1/acme-directory'
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+api:
+  base_path: /pki/v1
+acme:
+  paths:
+    directory: /acme-directory
+    new_nonce: /acme-nonce
+    new_account: /acme-register
+    new_order: /acme-order
+    new_authz: /acme-authz
+    revoke_cert: /acme-revoke
+    key_change: /acme-key-change
+  website_url: https://pki.corp.internal/documentation
+  caa_identities:
+  - acme.corp.internal
+  eab_required: false
+  eab_reusable: false
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  backend: internal
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+logging:
+  level: INFO
+  format: json

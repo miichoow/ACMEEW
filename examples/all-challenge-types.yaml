@@ -1,0 +1,47 @@
+_comment:
+- 'All three built-in challenge types enabled: http-01, dns-01,'
+- and tls-alpn-01. Each validator has its own tuning parameters.
+- ''
+- ACME clients will see all three in the authorization response
+- and can pick whichever they support.
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  backend: internal
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+challenges:
+  enabled:
+  - http-01
+  - dns-01
+  - tls-alpn-01
+  backoff_base_seconds: 5
+  backoff_max_seconds: 300
+  retry_after_seconds: 3
+  http01:
+    port: 80
+    timeout_seconds: 10
+    max_retries: 3
+    auto_validate: true
+    max_response_bytes: 1048576
+  dns01:
+    resolvers:
+    - 10.0.1.53
+    - 10.0.2.53
+    timeout_seconds: 30
+    propagation_wait_seconds: 15
+    max_retries: 5
+    auto_validate: false
+  tlsalpn01:
+    port: 443
+    timeout_seconds: 10
+    auto_validate: true
+logging:
+  level: INFO
+  format: json

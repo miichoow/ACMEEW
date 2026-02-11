@@ -1,0 +1,33 @@
+_comment:
+- Configuration using a custom (third-party) CA plugin.
+- The 'ext:' prefix tells ACMEEH to dynamically load the CA
+- backend class from the given Python module path.
+- ''
+- Your plugin must be importable (installed in the venv or on
+- PYTHONPATH) and must implement the CA backend interface.
+- ''
+- The 'ca' section allows 'additionalProperties' so you can pass
+- arbitrary keys that your custom backend reads from config.
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+  workers: 4
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  backend: ext:mycompany.pki.ca_backend.VaultPKIBackend
+  default_validity_days: 90
+  max_validity_days: 365
+  vault_addr: https://vault.corp.internal:8200
+  vault_pki_mount: pki_int
+  vault_role: acme-issuer
+  vault_token_env: VAULT_TOKEN
+challenges:
+  enabled:
+  - http-01
+  - dns-01
+logging:
+  level: INFO
+  format: json

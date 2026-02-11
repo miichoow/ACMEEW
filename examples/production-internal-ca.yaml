@@ -1,0 +1,180 @@
+_comment:
+- Production deployment with internal CA backend.
+- Hardened security, rate limits, proxy behind nginx/haproxy,
+- full audit logging, email notifications, TOS enforcement,
+- worker recycling, and strict identifier policies.
+server:
+  external_url: https://acme.corp.internal
+  bind: 0.0.0.0
+  port: 8443
+  workers: 8
+  worker_class: gthread
+  timeout: 30
+  graceful_timeout: 60
+  keepalive: 5
+  max_requests: 10000
+  max_requests_jitter: 1000
+proxy:
+  enabled: true
+  trusted_proxies:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  forwarded_for_header: X-Forwarded-For
+  forwarded_proto_header: X-Forwarded-Proto
+security:
+  allowed_algorithms:
+  - ES256
+  - ES384
+  min_rsa_key_size: 4096
+  allowed_ec_curves:
+  - P-256
+  - P-384
+  rate_limits:
+    enabled: true
+    new_account:
+      requests: 5
+      window_seconds: 3600
+    new_order:
+      requests: 100
+      window_seconds: 3600
+    challenge:
+      requests: 30
+      window_seconds: 60
+  identifier_policy:
+    allowed_domains:
+    - '*.corp.internal'
+    - '*.prod.internal'
+    forbidden_domains:
+    - admin.corp.internal
+    - '*.test.internal'
+    allow_wildcards: true
+    allow_ip: false
+    max_identifiers_per_order: 50
+acme:
+  website_url: https://pki.corp.internal/docs
+  caa_identities:
+  - acme.corp.internal
+  eab_required: true
+  eab_reusable: false
+challenges:
+  enabled:
+  - http-01
+  - dns-01
+  http01:
+    port: 80
+    timeout_seconds: 10
+    max_retries: 3
+  dns01:
+    resolvers:
+    - 10.0.1.53
+    - 10.0.2.53
+    timeout_seconds: 30
+    propagation_wait_seconds: 15
+    max_retries: 5
+ca:
+  backend: internal
+  default_validity_days: 90
+  max_validity_days: 397
+  profiles:
+    default:
+      key_usages:
+      - digital_signature
+      - key_encipherment
+      extended_key_usages:
+      - server_auth
+    client:
+      key_usages:
+      - digital_signature
+      extended_key_usages:
+      - client_auth
+      validity_days: 365
+      max_validity_days: 730
+    short-lived:
+      key_usages:
+      - digital_signature
+      extended_key_usages:
+      - server_auth
+      validity_days: 7
+      max_validity_days: 30
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+    key_provider: file
+    chain_path: /etc/acmeeh/ca/chain.pem
+    serial_source: database
+dns:
+  resolvers:
+  - 10.0.1.53
+  - 10.0.2.53
+  timeout_seconds: 10
+  retries: 3
+email:
+  require_contact: true
+  allowed_domains:
+  - corp.internal
+  validate_mx: true
+smtp:
+  enabled: true
+  host: smtp.corp.internal
+  port: 587
+  username: acmeeh-noreply
+  password: ${SMTP_PASSWORD}
+  use_tls: true
+  from_address: acmeeh@corp.internal
+logging:
+  level: INFO
+  format: json
+  audit:
+    enabled: true
+    file: /var/log/acmeeh/audit.log
+    syslog: true
+database:
+  host: db.corp.internal
+  port: 5432
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+  sslmode: verify-full
+  min_connections: 4
+  max_connections: 40
+  connection_timeout: 15.0
+  auto_setup: false
+notifications:
+  enabled: true
+  max_retries: 5
+  retry_delay_seconds: 120
+  batch_size: 100
+  retry_interval_seconds: 600
+hooks:
+  timeout_seconds: 15
+  max_workers: 8
+  registered:
+  - class: acmeeh_plugins.hooks.SlackNotifier
+    enabled: true
+    events:
+    - certificate.issuance
+    - certificate.revocation
+    timeout_seconds: 10
+    config:
+      webhook_url: ${SLACK_WEBHOOK_URL}
+      channel: '#pki-alerts'
+  - class: acmeeh_plugins.hooks.AuditLogger
+    enabled: true
+    events:
+    - account.registration
+    - order.creation
+    - certificate.issuance
+    - certificate.revocation
+    config:
+      log_path: /var/log/acmeeh/hooks-audit.jsonl
+nonce:
+  expiry_seconds: 1800
+  gc_interval_seconds: 180
+  length: 48
+order:
+  expiry_seconds: 604800
+  authorization_expiry_seconds: 2592000
+  cleanup_interval_seconds: 1800
+tos:
+  url: https://pki.corp.internal/terms-of-service
+  require_agreement: true

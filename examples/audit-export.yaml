@@ -1,0 +1,34 @@
+_comment:
+- Audit export via webhook and syslog.
+- ''
+- 'Combines three audit features:'
+- '  audit_export:    Forwards audit events to a webhook URL and/or'
+- '                   a remote syslog collector in real time.'
+- '  audit_retention: Periodically purges old audit rows from the DB.'
+- '  logging.audit:   Writes audit events to a local log file and/or'
+- '                   the system syslog daemon.'
+server:
+  external_url: https://acme.corp.internal
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+audit_export:
+  webhook_url: https://siem.corp.internal/api/v1/acmeeh-audit
+  syslog_host: syslog.corp.internal
+  syslog_port: 514
+audit_retention:
+  enabled: true
+  max_age_days: 365
+  cleanup_interval_seconds: 86400
+logging:
+  level: INFO
+  format: json
+  audit:
+    enabled: true
+    file: /var/log/acmeeh/audit.log
+    syslog: true

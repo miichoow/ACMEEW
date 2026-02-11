@@ -1,0 +1,31 @@
+_comment:
+- Configuration using a custom challenge validator plugin.
+- The 'ext:' prefix in challenges.enabled tells ACMEEH to
+- dynamically load the validator class from the given module path.
+- ''
+- This example enables the built-in http-01 PLUS a custom
+- dns-01 validator that integrates with your DNS provider's API
+- (e.g., Route53, Cloudflare, PowerDNS, etc.).
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  backend: internal
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+challenges:
+  enabled:
+  - http-01
+  - ext:mycompany.dns.powerdns_validator.PowerDNSValidator
+  http01:
+    port: 80
+    timeout_seconds: 10
+    max_retries: 3
+logging:
+  level: INFO
+  format: json

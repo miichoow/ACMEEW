@@ -1,0 +1,50 @@
+_comment:
+- Full email/notification configuration.
+- ''
+- 'This enables:'
+- '  - SMTP relay for sending certificate expiry warnings'
+- '  - Contact email required on account registration'
+- '  - Only @corp.internal emails accepted'
+- '  - MX record validation on provided emails'
+- '  - Notification processing with retry logic'
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+ca:
+  backend: internal
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+email:
+  require_contact: true
+  allowed_domains:
+  - corp.internal
+  - subsidiary.corp.internal
+  validate_mx: true
+smtp:
+  enabled: true
+  host: smtp.corp.internal
+  port: 587
+  username: acmeeh-notifications
+  password: ${SMTP_PASSWORD}
+  use_tls: true
+  from_address: pki-noreply@corp.internal
+  templates_path: /etc/acmeeh/templates
+notifications:
+  enabled: true
+  max_retries: 5
+  retry_delay_seconds: 120
+  batch_size: 100
+  retry_interval_seconds: 600
+dns:
+  resolvers:
+  - 10.0.1.53
+  timeout_seconds: 5
+  retries: 2
+logging:
+  level: INFO
+  format: json

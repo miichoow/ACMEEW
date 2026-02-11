@@ -1,0 +1,118 @@
+_comment:
+- ACME proxy with full EAB + admin API.
+- ''
+- 'Use-case: ACMEEH acts as a gateway in front of an upstream ACME CA.'
+- Downstream clients authenticate via EAB (managed through the admin
+- API), are restricted to specific domains/IPs via allowlists, and
+- have CSR profiles enforcing key constraints (e.g. RSA >= 2048).
+- ''
+- Challenges from downstream clients are auto-accepted (ACMEEH trusts
+- them).  ACMEEH then forwards the CSR to the upstream CA, resolves
+- the upstream DNS-01 challenge via a custom handler, and returns the
+- upstream-issued certificate to the original client.
+- ''
+- 'Requires:'
+- '  pip install acmeow'
+- '  pip install your-custom-dns-handler-package'
+server:
+  external_url: https://acme.corp.internal
+  bind: 0.0.0.0
+  port: 8443
+  workers: 4
+  worker_class: gthread
+  timeout: 60
+database:
+  host: db.corp.internal
+  port: 5432
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+  sslmode: verify-full
+  max_connections: 20
+  auto_setup: true
+acme:
+  eab_required: true
+  eab_reusable: false
+  website_url: https://pki.corp.internal/docs
+  caa_identities:
+  - acme.corp.internal
+security:
+  allowed_algorithms:
+  - ES256
+  - RS256
+  min_rsa_key_size: 2048
+  identifier_policy:
+    allowed_domains:
+    - '*.corp.internal'
+    - '*.prod.internal'
+    forbidden_domains:
+    - admin.corp.internal
+    allow_wildcards: true
+    allow_ip: true
+    max_identifiers_per_order: 50
+    enforce_account_allowlist: true
+challenges:
+  enabled:
+  - auto-http
+  - auto-dns
+  - auto-tls
+  auto_validate: true
+ca:
+  backend: acme_proxy
+  default_validity_days: 90
+  max_validity_days: 397
+  acme_proxy:
+    directory_url: https://upstream-acme.example.com/directory
+    email: pki-team@corp.internal
+    storage_path: /var/lib/acmeeh/acme_proxy_storage
+    challenge_type: dns-01
+    challenge_handler: ext:corp_dns.acmeeh_handler.CorpDnsHandlerFactory
+    challenge_handler_config:
+      dns_api_url: https://dns-api.corp.internal/v1
+      dns_api_token: ${DNS_API_TOKEN}
+      propagation_delay: 15
+      ttl: 60
+    eab_kid: ${UPSTREAM_EAB_KID}
+    eab_hmac_key: ${UPSTREAM_EAB_HMAC_KEY}
+    verify_ssl: true
+    timeout_seconds: 300
+admin_api:
+  enabled: true
+  base_path: /api
+  token_secret: ${ADMIN_TOKEN_SECRET}
+  token_expiry_seconds: 3600
+  initial_admin_email: admin@corp.internal
+smtp:
+  enabled: true
+  host: smtp.corp.internal
+  port: 587
+  username: acmeeh-noreply
+  password: ${SMTP_PASSWORD}
+  use_tls: true
+  from_address: pki-noreply@corp.internal
+email:
+  require_contact: true
+  allowed_domains:
+  - corp.internal
+  validate_mx: false
+dns:
+  resolvers:
+  - 10.0.1.53
+  - 10.0.2.53
+  timeout_seconds: 10
+  retries: 3
+logging:
+  level: INFO
+  format: json
+  audit:
+    enabled: true
+    file: /var/log/acmeeh/audit.log
+nonce:
+  expiry_seconds: 3600
+  gc_interval_seconds: 300
+order:
+  expiry_seconds: 604800
+  authorization_expiry_seconds: 2592000
+tos:
+  url: https://pki.corp.internal/terms-of-service
+  require_agreement: true

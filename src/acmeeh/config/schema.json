@@ -1,0 +1,671 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acmeeh.internal/config/schema.json",
+  "title": "ACMEEH Configuration",
+  "description": "Configuration schema for the ACMEEH enterprise ACME server.",
+  "type": "object",
+  "required": ["server", "database"],
+  "additionalProperties": false,
+
+  "$defs": {
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "positive_integer": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "non_negative_integer": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "rate_limit_rule": {
+      "type": "object",
+      "properties": {
+        "requests":       { "$ref": "#/$defs/positive_integer" },
+        "window_seconds": { "$ref": "#/$defs/positive_integer" }
+      },
+      "required": ["requests", "window_seconds"],
+      "additionalProperties": false
+    }
+  },
+
+  "properties": {
+
+    "_comment": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ]
+    },
+
+    "server": {
+      "type": "object",
+      "required": ["external_url"],
+      "additionalProperties": false,
+      "properties": {
+        "external_url":        { "type": "string", "minLength": 1 },
+        "bind":                { "type": "string", "default": "0.0.0.0" },
+        "port":                { "$ref": "#/$defs/port", "default": 8443 },
+        "workers":             { "$ref": "#/$defs/positive_integer", "default": 4 },
+        "worker_class":        { "type": "string", "enum": ["sync", "gthread", "gevent"], "default": "sync" },
+        "timeout":             { "$ref": "#/$defs/positive_integer", "default": 30 },
+        "graceful_timeout":    { "$ref": "#/$defs/non_negative_integer", "default": 30 },
+        "keepalive":           { "$ref": "#/$defs/non_negative_integer", "default": 2 },
+        "max_requests":        { "$ref": "#/$defs/non_negative_integer", "default": 0 },
+        "max_requests_jitter": { "$ref": "#/$defs/non_negative_integer", "default": 0 }
+      }
+    },
+
+    "proxy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":                { "type": "boolean", "default": false },
+        "trusted_proxies":        { "type": "array", "items": { "type": "string" }, "default": [] },
+        "forwarded_for_header":   { "type": "string", "default": "X-Forwarded-For" },
+        "forwarded_proto_header": { "type": "string", "default": "X-Forwarded-Proto" }
+      }
+    },
+
+    "security": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowed_algorithms": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"] },
+          "minItems": 1,
+          "default": ["ES256", "RS256"]
+        },
+        "min_rsa_key_size": {
+          "type": "integer",
+          "minimum": 2048,
+          "default": 2048
+        },
+        "max_rsa_key_size": {
+          "type": "integer",
+          "minimum": 2048,
+          "maximum": 16384,
+          "default": 8192
+        },
+        "allowed_ec_curves": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["P-256", "P-384", "P-521"] },
+          "minItems": 1,
+          "default": ["P-256", "P-384"]
+        },
+        "max_request_body_bytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "default": 65536
+        },
+        "allowed_csr_signature_algorithms": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "default": ["SHA256withRSA", "SHA384withRSA", "SHA512withRSA", "SHA256withECDSA", "SHA384withECDSA", "SHA512withECDSA"]
+        },
+        "min_csr_rsa_key_size": {
+          "type": "integer",
+          "minimum": 2048,
+          "default": 2048
+        },
+        "min_csr_ec_key_size": {
+          "type": "integer",
+          "minimum": 224,
+          "default": 256
+        },
+        "hsts_max_age_seconds": { "$ref": "#/$defs/non_negative_integer", "default": 63072000 },
+        "rate_limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled":     { "type": "boolean", "default": true },
+            "backend":     { "type": "string", "enum": ["memory", "database"], "default": "memory" },
+            "new_nonce":            { "$ref": "#/$defs/rate_limit_rule" },
+            "new_account": { "$ref": "#/$defs/rate_limit_rule" },
+            "new_order":   { "$ref": "#/$defs/rate_limit_rule" },
+            "new_order_per_identifier": { "$ref": "#/$defs/rate_limit_rule" },
+            "challenge":   { "$ref": "#/$defs/rate_limit_rule" },
+            "challenge_validation": { "$ref": "#/$defs/rate_limit_rule" },
+            "gc_interval_seconds": { "$ref": "#/$defs/positive_integer", "default": 300 },
+            "gc_max_age_seconds": { "$ref": "#/$defs/positive_integer", "default": 7200 }
+          }
+        },
+        "identifier_policy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allowed_domains":            { "type": "array", "items": { "type": "string" }, "default": [] },
+            "forbidden_domains":          { "type": "array", "items": { "type": "string" }, "default": [] },
+            "allow_wildcards":            { "type": "boolean", "default": true },
+            "allow_ip":                   { "type": "boolean", "default": false },
+            "max_identifiers_per_order":  { "$ref": "#/$defs/positive_integer", "default": 100 },
+            "max_identifier_value_length": { "$ref": "#/$defs/positive_integer", "default": 253 },
+            "enforce_account_allowlist":  { "type": "boolean", "default": false }
+          }
+        }
+      }
+    },
+
+    "acme": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "paths": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "directory":   { "type": "string", "default": "/directory" },
+            "new_nonce":   { "type": "string", "default": "/new-nonce" },
+            "new_account": { "type": "string", "default": "/new-account" },
+            "new_order":   { "type": "string", "default": "/new-order" },
+            "new_authz":   { "type": "string", "default": "/new-authz" },
+            "revoke_cert": { "type": "string", "default": "/revoke-cert" },
+            "key_change":  { "type": "string", "default": "/key-change" }
+          }
+        },
+        "website_url":   { "type": ["string", "null"], "default": null },
+        "caa_identities": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "eab_required":  { "type": "boolean", "default": false },
+        "eab_reusable":  { "type": "boolean", "default": false },
+        "caa_enforce":   { "type": "boolean", "default": true },
+        "orders_page_size": { "$ref": "#/$defs/positive_integer", "default": 50 }
+      }
+    },
+
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base_path": { "type": "string", "default": "" }
+      }
+    },
+
+    "challenges": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "default": ["http-01"]
+        },
+        "http01": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port":            { "$ref": "#/$defs/port", "default": 80 },
+            "timeout_seconds": { "$ref": "#/$defs/positive_integer", "default": 10 },
+            "max_retries":     { "$ref": "#/$defs/non_negative_integer", "default": 3 },
+            "auto_validate":   { "type": "boolean", "default": true },
+            "max_response_bytes": { "type": "integer", "minimum": 1024, "maximum": 10485760, "default": 1048576 },
+            "blocked_networks": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": ["127.0.0.0/8", "::1/128", "169.254.0.0/16", "fe80::/10"]
+            }
+          }
+        },
+        "dns01": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "resolvers":                { "type": "array", "items": { "type": "string" }, "default": [] },
+            "timeout_seconds":          { "$ref": "#/$defs/positive_integer", "default": 30 },
+            "propagation_wait_seconds": { "$ref": "#/$defs/non_negative_integer", "default": 10 },
+            "max_retries":              { "$ref": "#/$defs/non_negative_integer", "default": 5 },
+            "auto_validate":            { "type": "boolean", "default": false },
+            "require_dnssec":           { "type": "boolean", "default": false },
+            "require_authoritative":    { "type": "boolean", "default": false }
+          }
+        },
+        "tlsalpn01": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port":            { "$ref": "#/$defs/port", "default": 443 },
+            "timeout_seconds": { "$ref": "#/$defs/positive_integer", "default": 10 },
+            "max_retries":     { "$ref": "#/$defs/non_negative_integer", "default": 3 },
+            "auto_validate":   { "type": "boolean", "default": true }
+          }
+        },
+        "auto_validate":   { "type": "boolean", "default": true },
+        "retry_after_seconds": { "$ref": "#/$defs/positive_integer", "default": 3 },
+        "backoff_base_seconds": { "$ref": "#/$defs/positive_integer", "default": 5 },
+        "backoff_max_seconds":  { "$ref": "#/$defs/positive_integer", "default": 300 },
+        "background_worker": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled":      { "type": "boolean", "default": false },
+            "poll_seconds": { "$ref": "#/$defs/positive_integer", "default": 10 },
+            "stale_seconds": { "$ref": "#/$defs/positive_integer", "default": 300 }
+          }
+        }
+      }
+    },
+
+    "ca": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "backend": {
+          "type": "string",
+          "minLength": 1,
+          "default": "internal"
+        },
+        "default_validity_days": { "$ref": "#/$defs/positive_integer", "default": 90 },
+        "max_validity_days":     { "$ref": "#/$defs/positive_integer", "default": 397 },
+        "profiles": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "key_usages":          { "type": "array", "items": { "type": "string" } },
+              "extended_key_usages": { "type": "array", "items": { "type": "string" } },
+              "validity_days":       { "$ref": "#/$defs/positive_integer" },
+              "max_validity_days":   { "$ref": "#/$defs/positive_integer" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "internal": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "root_cert_path":  { "type": "string", "default": "" },
+            "root_key_path":   { "type": "string", "default": "" },
+            "key_provider":    { "type": "string", "enum": ["file", "pkcs11", "encrypted_file"], "default": "file" },
+            "chain_path":      { "type": ["string", "null"], "default": null },
+            "serial_source":   { "type": "string", "enum": ["database", "random"], "default": "database" },
+            "hash_algorithm":  { "type": "string", "enum": ["sha256", "sha384", "sha512"], "default": "sha256" }
+          }
+        },
+        "external": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sign_url":         { "type": "string", "default": "" },
+            "revoke_url":       { "type": "string", "default": "" },
+            "auth_header":      { "type": "string", "default": "Authorization" },
+            "auth_value":       { "type": "string", "default": "" },
+            "ca_cert_path":     { "type": ["string", "null"], "default": null },
+            "client_cert_path": { "type": ["string", "null"], "default": null },
+            "client_key_path":  { "type": ["string", "null"], "default": null },
+            "timeout_seconds":    { "$ref": "#/$defs/positive_integer", "default": 30 },
+            "max_retries":        { "$ref": "#/$defs/non_negative_integer", "default": 0 },
+            "retry_delay_seconds": { "type": "number", "minimum": 0, "default": 1.0 }
+          }
+        },
+        "acme_proxy": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "directory_url":            { "type": "string", "default": "" },
+            "email":                    { "type": "string", "default": "" },
+            "storage_path":             { "type": "string", "default": "./acme_proxy_storage" },
+            "challenge_type":           { "type": "string", "enum": ["dns-01", "http-01"], "default": "dns-01" },
+            "challenge_handler":        { "type": "string", "default": "" },
+            "challenge_handler_config": { "type": "object", "additionalProperties": true, "default": {} },
+            "eab_kid":                  { "type": ["string", "null"], "default": null },
+            "eab_hmac_key":             { "type": ["string", "null"], "default": null },
+            "proxy_url":                { "type": ["string", "null"], "default": null },
+            "verify_ssl":               { "type": "boolean", "default": true },
+            "timeout_seconds":          { "$ref": "#/$defs/positive_integer", "default": 300 }
+          }
+        },
+        "hsm": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pkcs11_library":    { "type": "string", "default": "" },
+            "token_label":       { "type": ["string", "null"], "default": null },
+            "slot_id":           { "type": ["integer", "null"], "default": null },
+            "pin":               { "type": "string", "default": "" },
+            "key_label":         { "type": ["string", "null"], "default": null },
+            "key_id":            { "type": ["string", "null"], "default": null },
+            "key_type":          { "type": "string", "enum": ["rsa", "ec"], "default": "ec" },
+            "hash_algorithm":    { "type": "string", "enum": ["sha256", "sha384", "sha512"], "default": "sha256" },
+            "issuer_cert_path":  { "type": "string", "default": "" },
+            "chain_path":        { "type": ["string", "null"], "default": null },
+            "serial_source":     { "type": "string", "enum": ["database", "random"], "default": "database" },
+            "login_required":    { "type": "boolean", "default": true },
+            "session_pool_size": { "type": "integer", "minimum": 1, "maximum": 32, "default": 4 },
+            "session_pool_timeout_seconds": { "$ref": "#/$defs/positive_integer", "default": 30 }
+          }
+        },
+        "circuit_breaker_failure_threshold": { "type": "integer", "minimum": 1, "default": 5 },
+        "circuit_breaker_recovery_timeout":  { "type": "number", "minimum": 0.1, "default": 30.0 }
+      }
+    },
+
+    "dns": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "resolvers":       { "type": "array", "items": { "type": "string" }, "default": [] },
+        "timeout_seconds": { "$ref": "#/$defs/positive_integer", "default": 10 },
+        "retries":         { "$ref": "#/$defs/non_negative_integer", "default": 3 }
+      }
+    },
+
+    "email": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require_contact": { "type": "boolean", "default": false },
+        "allowed_domains": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "validate_mx":     { "type": "boolean", "default": false }
+      }
+    },
+
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allow_contact_update": { "type": "boolean", "default": true },
+        "allow_deactivation":   { "type": "boolean", "default": true }
+      }
+    },
+
+    "smtp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":        { "type": "boolean", "default": false },
+        "host":           { "type": "string", "default": "" },
+        "port":           { "$ref": "#/$defs/port", "default": 587 },
+        "username":       { "type": "string", "default": "" },
+        "password":       { "type": "string", "default": "" },
+        "use_tls":        { "type": "boolean", "default": true },
+        "from_address":   { "type": "string", "default": "" },
+        "templates_path": { "type": ["string", "null"], "default": null },
+        "timeout_seconds": { "$ref": "#/$defs/positive_integer", "default": 30 }
+      }
+    },
+
+    "logging": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+          "default": "INFO"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["json", "human"],
+          "default": "json"
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "file":    { "type": ["string", "null"], "default": null },
+            "syslog":  { "type": "boolean", "default": false },
+            "max_file_size_bytes": { "type": "integer", "minimum": 1048576, "maximum": 1073741824, "default": 104857600 },
+            "backup_count":        { "type": "integer", "minimum": 1, "maximum": 100, "default": 10 }
+          }
+        }
+      }
+    },
+
+    "database": {
+      "type": "object",
+      "required": ["database", "user"],
+      "additionalProperties": false,
+      "properties": {
+        "host":               { "type": "string", "default": "localhost" },
+        "port":               { "$ref": "#/$defs/port", "default": 5432 },
+        "database":           { "type": "string", "minLength": 1 },
+        "user":               { "type": "string", "minLength": 1 },
+        "password":           { "type": "string", "default": "" },
+        "sslmode":            { "type": "string", "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"], "default": "prefer" },
+        "min_connections":    { "$ref": "#/$defs/positive_integer", "default": 2 },
+        "max_connections":    { "$ref": "#/$defs/positive_integer", "default": 10 },
+        "connection_timeout": { "type": "number", "exclusiveMinimum": 0, "default": 30.0 },
+        "auto_setup":         { "type": "boolean", "default": false }
+      }
+    },
+
+    "notifications": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":                 { "type": "boolean", "default": true },
+        "max_retries":             { "$ref": "#/$defs/non_negative_integer", "default": 3 },
+        "retry_delay_seconds":     { "$ref": "#/$defs/positive_integer", "default": 60 },
+        "batch_size":              { "$ref": "#/$defs/positive_integer", "default": 50 },
+        "retry_interval_seconds":  { "$ref": "#/$defs/positive_integer", "default": 300 },
+        "expiration_warning_days": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/positive_integer" },
+          "default": [30, 14, 7, 1]
+        },
+        "expiration_check_interval_seconds": { "$ref": "#/$defs/positive_integer", "default": 3600 },
+        "retry_backoff_multiplier": { "type": "number", "minimum": 1.0, "maximum": 10.0, "default": 2.0 },
+        "retry_max_delay_seconds": { "$ref": "#/$defs/positive_integer", "default": 3600 }
+      }
+    },
+
+    "hooks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "timeout_seconds": { "type": "integer", "minimum": 1, "maximum": 300, "default": 30 },
+        "max_workers": { "type": "integer", "minimum": 1, "maximum": 16, "default": 4 },
+        "max_retries": { "$ref": "#/$defs/non_negative_integer", "default": 0 },
+        "dead_letter_log": { "type": ["string", "null"], "default": null },
+        "registered": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "required": ["class"],
+            "additionalProperties": false,
+            "properties": {
+              "_comment": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "array", "items": { "type": "string" } }
+                ]
+              },
+              "class": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)+$"
+              },
+              "enabled":         { "type": "boolean", "default": true },
+              "events": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "account.registration",
+                    "order.creation",
+                    "challenge.before_validate",
+                    "challenge.after_validate",
+                    "challenge.on_failure",
+                    "challenge.on_retry",
+                    "certificate.issuance",
+                    "certificate.revocation",
+                    "certificate.delivery",
+                    "ct.submission"
+                  ]
+                }
+              },
+              "timeout_seconds": { "type": "integer", "minimum": 1, "maximum": 300 },
+              "config":          { "type": "object", "additionalProperties": true, "maxProperties": 20 }
+            }
+          },
+          "default": []
+        }
+      }
+    },
+
+    "nonce": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expiry_seconds":      { "$ref": "#/$defs/positive_integer", "default": 3600 },
+        "gc_interval_seconds": { "$ref": "#/$defs/positive_integer", "default": 300 },
+        "length":              { "type": "integer", "minimum": 16, "maximum": 128, "default": 32 },
+        "audit_consumed":      { "type": "boolean", "default": false }
+      }
+    },
+
+    "order": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "expiry_seconds":               { "$ref": "#/$defs/positive_integer", "default": 604800 },
+        "authorization_expiry_seconds": { "$ref": "#/$defs/positive_integer", "default": 2592000 },
+        "cleanup_interval_seconds":     { "$ref": "#/$defs/positive_integer", "default": 3600 },
+        "stale_processing_threshold_seconds": { "$ref": "#/$defs/positive_integer", "default": 600 },
+        "pre_authorization_lifetime_days": { "$ref": "#/$defs/positive_integer", "default": 30 },
+        "retry_after_seconds": { "$ref": "#/$defs/positive_integer", "default": 3 }
+      }
+    },
+
+    "tos": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url":               { "type": ["string", "null"], "default": null },
+        "require_agreement": { "type": "boolean", "default": false }
+      }
+    },
+
+    "crl": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":                  { "type": "boolean", "default": false },
+        "path":                     { "type": "string", "default": "/crl" },
+        "rebuild_interval_seconds": { "$ref": "#/$defs/positive_integer", "default": 3600 },
+        "next_update_seconds":      { "$ref": "#/$defs/positive_integer", "default": 86400 },
+        "hash_algorithm":           { "type": "string", "enum": ["sha256", "sha384", "sha512"], "default": "sha256" }
+      }
+    },
+
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "path":    { "type": "string", "default": "/metrics" },
+        "auth_required": { "type": "boolean", "default": false }
+      }
+    },
+
+    "ct_logging": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "logs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["url"],
+            "additionalProperties": false,
+            "properties": {
+              "url":              { "type": "string", "minLength": 1 },
+              "public_key_path":  { "type": ["string", "null"], "default": null },
+              "timeout_seconds":  { "$ref": "#/$defs/positive_integer", "default": 10 }
+            }
+          },
+          "default": []
+        },
+        "submit_precert": { "type": "boolean", "default": false }
+      }
+    },
+
+    "audit_retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":                  { "type": "boolean", "default": false },
+        "max_age_days":             { "$ref": "#/$defs/positive_integer", "default": 90 },
+        "cleanup_interval_seconds": { "$ref": "#/$defs/positive_integer", "default": 86400 }
+      }
+    },
+
+    "admin_api": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":              { "type": "boolean", "default": false },
+        "base_path":            { "type": "string", "default": "/api" },
+        "token_secret":         { "type": "string", "default": "" },
+        "token_expiry_seconds": { "$ref": "#/$defs/positive_integer", "default": 3600 },
+        "initial_admin_email":  { "type": "string", "default": "" },
+        "password_length":      { "$ref": "#/$defs/positive_integer", "default": 20 },
+        "default_page_size":    { "$ref": "#/$defs/positive_integer", "default": 50 },
+        "max_page_size":        { "$ref": "#/$defs/positive_integer", "default": 1000 }
+      }
+    },
+
+    "ari": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":             { "type": "boolean", "default": false },
+        "renewal_percentage":  { "type": "number", "minimum": 0.01, "maximum": 1.0, "default": 0.6667 },
+        "path":                { "type": "string", "default": "/renewalInfo" }
+      }
+    },
+
+    "ocsp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":                    { "type": "boolean", "default": false },
+        "path":                       { "type": "string", "default": "/ocsp" },
+        "response_validity_seconds":  { "$ref": "#/$defs/positive_integer", "default": 86400 },
+        "hash_algorithm":             { "type": "string", "enum": ["sha256", "sha384", "sha512"], "default": "sha256" }
+      }
+    },
+
+    "audit_export": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "webhook_url":  { "type": ["string", "null"], "default": null },
+        "syslog_host":  { "type": ["string", "null"], "default": null },
+        "syslog_port":  { "$ref": "#/$defs/port", "default": 514 }
+      }
+    },
+
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":                         { "type": "boolean", "default": true },
+        "invalid_order_max_age_days":      { "$ref": "#/$defs/positive_integer", "default": 30 },
+        "expired_authz_max_age_days":      { "$ref": "#/$defs/positive_integer", "default": 30 },
+        "invalid_challenge_max_age_days":  { "$ref": "#/$defs/positive_integer", "default": 30 },
+        "expiration_notice_max_age_days":  { "$ref": "#/$defs/positive_integer", "default": 90 },
+        "cleanup_interval_seconds":        { "$ref": "#/$defs/positive_integer", "default": 86400 },
+        "cleanup_loop_interval_seconds":   { "$ref": "#/$defs/positive_integer", "default": 60 }
+      }
+    },
+
+    "quotas": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled":                              { "type": "boolean", "default": false },
+        "max_certificates_per_account_per_day": { "$ref": "#/$defs/non_negative_integer", "default": 0 },
+        "max_orders_per_account_per_day":       { "$ref": "#/$defs/non_negative_integer", "default": 0 }
+      }
+    }
+  }
+}

@@ -1,0 +1,62 @@
+_comment:
+- Local development configuration.
+- Single worker, human-readable logs, auto database setup,
+- no TLS verification, relaxed timeouts, audit logging off.
+- ''
+- 'Run with:  PYTHONPATH=src DB_PASSWORD=devpass python -m acmeeh -c examples/development.json
+  --dev'
+server:
+  external_url: https://localhost:8443
+  bind: 127.0.0.1
+  port: 8443
+  workers: 1
+  worker_class: sync
+  timeout: 120
+database:
+  host: localhost
+  port: 5432
+  database: acmeeh_dev
+  user: postgres
+  password: ${DB_PASSWORD:-devpass}
+  sslmode: disable
+  min_connections: 1
+  max_connections: 5
+  connection_timeout: 10.0
+  auto_setup: true
+ca:
+  backend: internal
+  default_validity_days: 30
+  max_validity_days: 90
+  internal:
+    root_cert_path: dev/ca/root.pem
+    root_key_path: dev/ca/root-key.pem
+    key_provider: file
+    serial_source: random
+challenges:
+  enabled:
+  - http-01
+  http01:
+    port: 5002
+    timeout_seconds: 30
+    max_retries: 5
+security:
+  allowed_algorithms:
+  - ES256
+  - RS256
+  rate_limits:
+    enabled: false
+logging:
+  level: DEBUG
+  format: human
+  audit:
+    enabled: false
+nonce:
+  expiry_seconds: 7200
+  gc_interval_seconds: 600
+order:
+  expiry_seconds: 86400
+  authorization_expiry_seconds: 86400
+hooks:
+  timeout_seconds: 60
+  max_workers: 2
+  registered: []

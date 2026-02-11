@@ -1,0 +1,74 @@
+_comment:
+- Admin API enabled with EAB, allowlists, and CSR profiles.
+- ''
+- 'The admin API provides REST endpoints for managing:'
+- '  - EAB credentials (POST /api/eab)'
+- '  - Allowed identifiers per account (POST /api/allowed-identifiers)'
+- '  - CSR profiles per account (POST /api/csr-profiles)'
+- '  - Admin users and audit logs'
+- ''
+- Admin authentication uses JWT tokens issued via POST /api/auth/login.
+- The initial admin account is created on first startup using the
+- initial_admin_email; its password is printed to the log (or emailed
+- if SMTP is configured).
+- ''
+- 'IMPORTANT: admin_api.base_path must NOT collide with api.base_path.'
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+  workers: 4
+  worker_class: gthread
+database:
+  host: db.corp.internal
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+  sslmode: verify-full
+  max_connections: 20
+  auto_setup: true
+acme:
+  eab_required: true
+  eab_reusable: false
+security:
+  identifier_policy:
+    enforce_account_allowlist: true
+    allowed_domains:
+    - '*.corp.internal'
+    allow_wildcards: true
+    allow_ip: true
+    max_identifiers_per_order: 50
+ca:
+  backend: internal
+  default_validity_days: 90
+  max_validity_days: 397
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+    chain_path: /etc/acmeeh/ca/chain.pem
+    serial_source: database
+admin_api:
+  enabled: true
+  base_path: /api
+  token_secret: ${ADMIN_TOKEN_SECRET}
+  token_expiry_seconds: 3600
+  initial_admin_email: admin@corp.internal
+  default_page_size: 50
+  max_page_size: 500
+smtp:
+  enabled: true
+  host: smtp.corp.internal
+  port: 587
+  username: acmeeh-noreply
+  password: ${SMTP_PASSWORD}
+  use_tls: true
+  from_address: pki-noreply@corp.internal
+email:
+  require_contact: true
+  allowed_domains:
+  - corp.internal
+logging:
+  level: INFO
+  format: json
+  audit:
+    enabled: true
+    file: /var/log/acmeeh/audit.log

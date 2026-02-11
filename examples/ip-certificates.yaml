@@ -1,0 +1,35 @@
+_comment:
+- Allow IP address identifiers in certificates.
+- ''
+- By default, ACMEEH only allows domain-name identifiers.
+- 'Set allow_ip: true to let clients request certificates for'
+- IP addresses (useful for internal infrastructure that uses
+- IPs directly, like load balancers, APIs, or IoT devices).
+- ''
+- 'Note: IP identifiers bypass domain allow/forbid lists.'
+server:
+  external_url: https://acme.corp.internal
+  port: 8443
+database:
+  database: acmeeh
+  user: acmeeh
+  password: ${DB_PASSWORD}
+security:
+  identifier_policy:
+    allowed_domains:
+    - '*.corp.internal'
+    allow_wildcards: true
+    allow_ip: true
+    max_identifiers_per_order: 25
+ca:
+  backend: internal
+  internal:
+    root_cert_path: /etc/acmeeh/ca/root.pem
+    root_key_path: /etc/acmeeh/ca/root-key.pem
+challenges:
+  enabled:
+  - http-01
+  - tls-alpn-01
+logging:
+  level: INFO
+  format: json

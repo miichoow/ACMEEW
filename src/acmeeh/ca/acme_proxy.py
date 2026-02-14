@@ -251,9 +251,7 @@ class AcmeProxyBackend(CABackend):
 
         """
         acme_ids = [
-            self._identifier_cls.dns(value)
-            if id_type == "dns"
-            else self._identifier_cls.ip(value)
+            self._identifier_cls.dns(value) if id_type == "dns" else self._identifier_cls.ip(value)
             for id_type, value in identifiers
         ]
 

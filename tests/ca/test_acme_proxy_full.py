@@ -309,7 +309,10 @@ class TestStartupCheckFull:
 
         assert backend._client is mock_client
         assert backend._handler is mock_handler.return_value
-        mock_client.create_account.assert_called_once_with(email="admin@example.com")
+        call_kwargs = mock_acmeow.AcmeClient.call_args[1]
+        assert call_kwargs["server_url"] == "https://acme.upstream.example/directory"
+        assert call_kwargs["email"] == "admin@example.com"
+        mock_client.create_account.assert_called_once_with()
 
 
 # ===========================================================================
@@ -352,6 +355,36 @@ class TestInitAcmeClient:
         call_kwargs = mock_cls.call_args[1]
         assert call_kwargs["verify_ssl"] is False
 
+    def test_constructor_receives_server_url_and_email(self):
+        settings = _make_ca_settings()
+        backend = AcmeProxyBackend(settings)
+
+        mock_cls = MagicMock()
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+
+        from pathlib import Path
+
+        backend._init_acme_client(mock_cls, Path("./storage"))
+
+        call_kwargs = mock_cls.call_args[1]
+        assert call_kwargs["server_url"] == "https://acme.upstream.example/directory"
+        assert call_kwargs["email"] == "admin@example.com"
+
+    def test_create_account_called_without_args(self):
+        settings = _make_ca_settings()
+        backend = AcmeProxyBackend(settings)
+
+        mock_cls = MagicMock()
+        mock_client = MagicMock()
+        mock_cls.return_value = mock_client
+
+        from pathlib import Path
+
+        backend._init_acme_client(mock_cls, Path("./storage"))
+
+        mock_client.create_account.assert_called_once_with()
+
     def test_with_eab(self):
         proxy = _make_proxy_settings(eab_kid="kid-123", eab_hmac_key="hmac-secret")
         settings = _make_ca_settings(proxy)
@@ -365,9 +398,11 @@ class TestInitAcmeClient:
 
         backend._init_acme_client(mock_cls, Path("./storage"))
 
-        acct_kwargs = mock_client.create_account.call_args[1]
-        assert acct_kwargs["eab_kid"] == "kid-123"
-        assert acct_kwargs["eab_hmac_key"] == "hmac-secret"
+        mock_client.set_external_account_binding.assert_called_once_with(
+            kid="kid-123",
+            hmac_key="hmac-secret",
+        )
+        mock_client.create_account.assert_called_once_with()
 
     def test_without_eab(self):
         proxy = _make_proxy_settings(eab_kid=None, eab_hmac_key=None)
@@ -382,9 +417,8 @@ class TestInitAcmeClient:
 
         backend._init_acme_client(mock_cls, Path("./storage"))
 
-        acct_kwargs = mock_client.create_account.call_args[1]
-        assert "eab_kid" not in acct_kwargs
-        assert "eab_hmac_key" not in acct_kwargs
+        mock_client.set_external_account_binding.assert_not_called()
+        mock_client.create_account.assert_called_once_with()
 
 
 # ===========================================================================

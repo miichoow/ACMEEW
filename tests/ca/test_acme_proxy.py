@@ -216,7 +216,10 @@ class TestStartupCheck:
         with patch.dict("sys.modules", {"acmeow": mock_acmeow}):
             backend.startup_check()
 
-        mock_client.create_account.assert_called_once_with(email="admin@example.com")
+        call_kwargs = mock_acmeow.AcmeClient.call_args[1]
+        assert call_kwargs["server_url"] == "https://acme.upstream.example/directory"
+        assert call_kwargs["email"] == "admin@example.com"
+        mock_client.create_account.assert_called_once_with()
         assert backend._client is mock_client
 
     @patch("acmeeh.ca.acme_proxy.load_upstream_handler")
@@ -234,11 +237,11 @@ class TestStartupCheck:
         with patch.dict("sys.modules", {"acmeow": mock_acmeow}):
             backend.startup_check()
 
-        mock_client.create_account.assert_called_once_with(
-            email="admin@example.com",
-            eab_kid="kid123",
-            eab_hmac_key="hmackey",
+        mock_client.set_external_account_binding.assert_called_once_with(
+            kid="kid123",
+            hmac_key="hmackey",
         )
+        mock_client.create_account.assert_called_once_with()
 
 
 # ---------------------------------------------------------------------------

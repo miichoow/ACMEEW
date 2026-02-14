@@ -475,10 +475,10 @@ Configuration
      - Config dict passed to challenge handler
    * - ``eab_kid``
      - ``null``
-     - EAB Key ID (if upstream requires it)
+     - EAB Key ID (if upstream requires External Account Binding)
    * - ``eab_hmac_key``
      - ``null``
-     - EAB HMAC key
+     - EAB HMAC key (base64url-encoded)
    * - ``proxy_url``
      - ``null``
      - HTTP proxy for upstream requests
@@ -496,12 +496,15 @@ Behavioral Notes
 - Certificate Transparency logging is handled entirely by the upstream CA, not by ACMEEH.
 - All operations (sign and revoke) are serialized with a thread lock for safety, since the underlying ACME client library is not thread-safe.
 - Revocation is best-effort: failures are logged but do not raise errors back to the caller.
+- EAB credentials (``eab_kid`` and ``eab_hmac_key``) are configured on the ACMEOW client via ``set_external_account_binding()`` before account registration. If the upstream CA requires EAB, both fields must be set.
 
 .. note::
 
    **Dependency**
 
-   The ACME proxy backend requires the ACMEOW library version 1.1.0 or later.
+   The ACME proxy backend requires the ACMEOW library (``pip install acmeow``).
+   The ``directory_url`` and ``email`` config fields map to the ``server_url`` and ``email``
+   parameters of the ACMEOW ``AcmeClient`` constructor.
 
 Custom Backend
 --------------

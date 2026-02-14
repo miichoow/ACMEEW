@@ -124,7 +124,8 @@ class AcmeProxyBackend(CABackend):
 
         """
         client_kwargs: dict[str, Any] = {
-            "directory_url": self._proxy.directory_url,
+            "server_url": self._proxy.directory_url,
+            "email": self._proxy.email,
             "storage_path": str(storage),
         }
         if self._proxy.proxy_url:
@@ -134,15 +135,15 @@ class AcmeProxyBackend(CABackend):
 
         self._client = acme_client_cls(**client_kwargs)
 
-        # Register account
-        account_kwargs: dict[str, str] = {
-            "email": self._proxy.email,
-        }
+        # Configure EAB if provided
         if self._proxy.eab_kid and self._proxy.eab_hmac_key:
-            account_kwargs["eab_kid"] = self._proxy.eab_kid
-            account_kwargs["eab_hmac_key"] = self._proxy.eab_hmac_key
+            self._client.set_external_account_binding(
+                kid=self._proxy.eab_kid,
+                hmac_key=self._proxy.eab_hmac_key,
+            )
 
-        self._client.create_account(**account_kwargs)
+        # Register account
+        self._client.create_account()
         log.info(
             "ACME proxy: registered account with %s",
             self._proxy.directory_url,

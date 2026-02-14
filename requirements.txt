@@ -1,16 +1,15 @@
+# Auto-generated from pyproject.toml — do not edit manually.
+# Regenerate with: pip-compile pyproject.toml -o requirements.txt
+# Or keep in sync manually when editing pyproject.toml [dependencies].
+
 # Core
 Flask>=3.1,<4
-cryptography>=46,<47
+cryptography>=46,<48
 Jinja2>=3.1,<4
-PyYAML>=6.0,<7
-jsonschema>=4.20,<5
+dnspython>=2.8,<3
 
 # Database
 psycopg[binary]>=3.3,<4
-psycopg-pool>=3.3,<4
-
-# DNS challenge validation
-dnspython>=2.8,<3
 
 # Configuration & database toolkit
 pyConfigKit>=1.1,<2
@@ -18,6 +17,3 @@ PyPGKit>=1.0,<2
 
 # Production server (Unix only)
 gunicorn>=22,<24; sys_platform != "win32"
-
-# Dev / testing
-pytest>=9,<10

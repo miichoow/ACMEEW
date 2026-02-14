@@ -121,6 +121,13 @@ def create_app(  # noqa: C901, PLR0915
         )
         app.extensions["container"] = container
 
+        # -- CA backend startup check ---------------------------------------
+        try:
+            container.ca_backend.startup_check()
+        except Exception:
+            log.exception("CA backend startup check failed")
+            raise
+
         # -- Hook registry shutdown (process exit, not per-request) ---------
         atexit.register(container.hook_registry.shutdown)
 

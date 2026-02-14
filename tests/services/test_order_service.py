@@ -49,8 +49,8 @@ def _order_settings(expiry=3600, authz_expiry=3600):
     )
 
 
-def _challenge_settings(enabled=("http-01", "dns-01", "tls-alpn-01")):
-    return SimpleNamespace(enabled=list(enabled))
+def _challenge_settings(enabled=("http-01", "dns-01", "tls-alpn-01"), auto_accept=False):
+    return SimpleNamespace(enabled=list(enabled), auto_accept=auto_accept)
 
 
 def _make_service(

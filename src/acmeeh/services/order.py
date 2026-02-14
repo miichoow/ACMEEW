@@ -226,6 +226,8 @@ class OrderService:
             ChallengeType(t) for t in self._challenge_settings.enabled if not t.startswith("ext:")
         ]
 
+        auto_accept = self._challenge_settings.auto_accept
+
         # Atomic creation: order + authzs + challenges
         with UnitOfWork(self._db):
             order, authz_ids = self._create_order_atomic(
@@ -237,6 +239,7 @@ class OrderService:
                 nb=nb,
                 na=na,
                 enabled_types=enabled_types,
+                auto_accept=auto_accept,
             )
 
         log.info(
@@ -292,6 +295,7 @@ class OrderService:
         nb: datetime | None,
         na: datetime | None,
         enabled_types: list[ChallengeType],
+        auto_accept: bool = False,
     ) -> tuple[Order, list[UUID]]:
         """Create order, authorizations, and challenges atomically.
 
@@ -351,7 +355,7 @@ class OrderService:
                 account_id=account_id,
                 identifier_type=ident.type,
                 identifier_value=authz_value,
-                status=AuthorizationStatus.PENDING,
+                status=AuthorizationStatus.VALID if auto_accept else AuthorizationStatus.PENDING,
                 expires=authz_expires,
                 wildcard=is_wildcard,
             )
@@ -373,7 +377,8 @@ class OrderService:
                     authorization_id=authz_id,
                     type=ctype,
                     token=token,
-                    status=ChallengeStatus.PENDING,
+                    status=ChallengeStatus.VALID if auto_accept else ChallengeStatus.PENDING,
+                    validated_at=datetime.now(UTC) if auto_accept else None,
                 )
                 pending_challenges.append(challenge)
 
@@ -384,6 +389,21 @@ class OrderService:
             else:
                 for challenge in pending_challenges:
                     self._challenges.create(challenge)
+
+        # When auto_accept is on, all authzs are VALID (reused ones are
+        # always VALID, new ones were created as VALID above) so the
+        # order can transition directly to READY.
+        if auto_accept:
+            self._orders.transition_status(
+                order_id,
+                OrderStatus.PENDING,
+                OrderStatus.READY,
+            )
+            order = replace(order, status=OrderStatus.READY)
+            log.info(
+                "Auto-accept: order %s immediately READY (all authzs pre-validated)",
+                order_id,
+            )
 
         return order, authz_ids
 

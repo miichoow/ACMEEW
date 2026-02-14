@@ -12,13 +12,14 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from acmeeh.app.errors import MALFORMED, UNAUTHORIZED, AcmeProblem
-from acmeeh.core.types import AuthorizationStatus
+from acmeeh.core.types import AuthorizationStatus, OrderStatus
 from acmeeh.models.authorization import Authorization
 from acmeeh.models.challenge import Challenge
 
 if TYPE_CHECKING:
     from acmeeh.repositories.authorization import AuthorizationRepository
     from acmeeh.repositories.challenge import ChallengeRepository
+    from acmeeh.repositories.order import OrderRepository
 
 log = logging.getLogger(__name__)
 
@@ -31,10 +32,12 @@ class AuthorizationService:
         authz_repo: AuthorizationRepository,
         challenge_repo: ChallengeRepository,
         pre_authorization_lifetime_days: int = 30,
+        order_repo: OrderRepository | None = None,
     ) -> None:
         self._authz = authz_repo
         self._challenges = challenge_repo
         self._pre_auth_lifetime_days = pre_authorization_lifetime_days
+        self._orders = order_repo
 
     def get_authorization(
         self,
@@ -110,6 +113,31 @@ class AuthorizationService:
             )
 
         log.info("Deactivated authorization %s", authz_id)
+
+        # RFC 8555 §7.1.6: deactivated authz → invalidate linked pending orders
+        if self._orders is not None:
+            orders = self._orders.find_orders_by_authorization(authz_id)
+            for order in orders:
+                if order.status not in (OrderStatus.PENDING, OrderStatus.READY):
+                    continue
+                self._orders.transition_status(
+                    order.id,
+                    order.status,
+                    OrderStatus.INVALID,
+                    error={
+                        "type": "urn:ietf:params:acme:error:unauthorized",
+                        "detail": (
+                            "Authorization deactivated by client for identifier "
+                            f"'{authz.identifier_value}'"
+                        ),
+                    },
+                )
+                log.info(
+                    "Invalidated order %s due to authz %s deactivation",
+                    order.id,
+                    authz_id,
+                )
+
         return result
 
     def create_pre_authorization(

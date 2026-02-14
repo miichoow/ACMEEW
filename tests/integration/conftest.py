@@ -832,6 +832,7 @@ def app(_min_config_data):
     container.authorization_service = AuthorizationService(
         container.authorizations,
         container.challenges,
+        order_repo=container.orders,
     )
     container.challenge_service = ChallengeService(
         container.challenges,

@@ -275,6 +275,7 @@ class Container:
             self.authorizations,
             self.challenges,
             pre_authorization_lifetime_days=(settings.order.pre_authorization_lifetime_days),
+            order_repo=self.orders,
         )
         self.challenge_service: ChallengeService = _ChS(
             self.challenges,

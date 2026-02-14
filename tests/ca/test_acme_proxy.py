@@ -286,6 +286,7 @@ class TestSign:
         backend = AcmeProxyBackend(ca_settings)
         backend._client = mock_client
         backend._handler = MagicMock()
+        backend._identifier_cls = MagicMock()
 
         csr = _make_test_csr(["example.com", "www.example.com"])
         result = backend.sign(csr, profile=profile, validity_days=90)
@@ -309,6 +310,7 @@ class TestSign:
         backend = AcmeProxyBackend(ca_settings)
         backend._client = mock_client
         backend._handler = MagicMock()
+        backend._identifier_cls = MagicMock()
 
         csr = _make_test_csr()
         with pytest.raises(CAError, match="Upstream ACME error"):
@@ -323,6 +325,7 @@ class TestSign:
         backend = AcmeProxyBackend(ca_settings)
         backend._client = mock_client
         backend._handler = MagicMock()
+        backend._identifier_cls = MagicMock()
 
         csr = _make_test_csr(["example.com"])
         backend.sign(csr, profile=profile, validity_days=90)
@@ -384,7 +387,7 @@ class TestExtractIdentifiers:
     def test_extracts_dns_names(self):
         csr = _make_test_csr(["foo.com", "bar.com"])
         ids = AcmeProxyBackend._extract_identifiers(csr)
-        assert ids == ["foo.com", "bar.com"]
+        assert ids == [("dns", "foo.com"), ("dns", "bar.com")]
 
     def test_empty_for_no_san(self):
         key = ec.generate_private_key(ec.SECP256R1())

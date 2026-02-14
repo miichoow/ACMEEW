@@ -450,6 +450,7 @@ class TestSignFull:
         backend = AcmeProxyBackend(ca_settings)
         backend._client = mock_client
         backend._handler = MagicMock()
+        backend._identifier_cls = MagicMock()
 
         csr = _make_test_csr(["test.example.com"])
         result = backend.sign(csr, profile=profile, validity_days=90)
@@ -469,6 +470,7 @@ class TestSignFull:
         backend = AcmeProxyBackend(ca_settings)
         backend._client = mock_client
         backend._handler = MagicMock()
+        backend._identifier_cls = MagicMock()
 
         csr = _make_test_csr()
         with pytest.raises(CAError, match="upstream CA problem"):
@@ -482,6 +484,7 @@ class TestSignFull:
         backend = AcmeProxyBackend(ca_settings)
         backend._client = mock_client
         backend._handler = MagicMock()
+        backend._identifier_cls = MagicMock()
 
         csr = _make_test_csr()
         with pytest.raises(CAError) as exc_info:
@@ -497,6 +500,7 @@ class TestSignFull:
         backend = AcmeProxyBackend(ca_settings)
         backend._client = mock_client
         backend._handler = MagicMock()
+        backend._identifier_cls = MagicMock()
 
         csr = _make_test_csr()
         with pytest.raises(CAError) as exc_info:
@@ -519,17 +523,26 @@ class TestExecuteUpstreamFlow:
         mock_client.get_certificate.return_value = (cert_pem, None)
         mock_handler = MagicMock()
 
+        # Make Identifier.dns / Identifier.ip return distinguishable mocks
+        mock_identifier_cls = MagicMock()
+        mock_id1 = MagicMock(name="id-example")
+        mock_id2 = MagicMock(name="id-www")
+        mock_identifier_cls.dns.side_effect = [mock_id1, mock_id2]
+
         backend = AcmeProxyBackend(ca_settings)
         backend._client = mock_client
         backend._handler = mock_handler
+        backend._identifier_cls = mock_identifier_cls
 
-        identifiers = ["example.com", "www.example.com"]
+        identifiers = [("dns", "example.com"), ("dns", "www.example.com")]
         csr_der = b"\x30\x00"  # dummy DER
 
         result = backend._execute_upstream_flow(identifiers, csr_der)
 
         assert result == cert_pem
-        mock_client.create_order.assert_called_once_with(identifiers)
+        mock_identifier_cls.dns.assert_any_call("example.com")
+        mock_identifier_cls.dns.assert_any_call("www.example.com")
+        mock_client.create_order.assert_called_once_with([mock_id1, mock_id2])
         mock_client.complete_challenges.assert_called_once_with(
             mock_handler,
             challenge_type="dns-01",
@@ -617,13 +630,13 @@ class TestExtractIdentifiersFull:
     def test_dns_names(self):
         csr = _make_test_csr(domains=["foo.com", "bar.com"])
         ids = AcmeProxyBackend._extract_identifiers(csr)
-        assert ids == ["foo.com", "bar.com"]
+        assert ids == [("dns", "foo.com"), ("dns", "bar.com")]
 
     def test_ip_addresses(self):
         csr = _make_test_csr(domains=None, ips=["192.168.1.1", "10.0.0.1"])
         ids = AcmeProxyBackend._extract_identifiers(csr)
-        assert "192.168.1.1" in ids
-        assert "10.0.0.1" in ids
+        assert ("ip", "192.168.1.1") in ids
+        assert ("ip", "10.0.0.1") in ids
 
     def test_mixed_dns_and_ip(self):
         csr = _make_test_csr(
@@ -631,8 +644,8 @@ class TestExtractIdentifiersFull:
             ips=["192.168.1.1"],
         )
         ids = AcmeProxyBackend._extract_identifiers(csr)
-        assert "test.example.com" in ids
-        assert "192.168.1.1" in ids
+        assert ("dns", "test.example.com") in ids
+        assert ("ip", "192.168.1.1") in ids
 
     def test_no_san_returns_empty(self):
         csr = _make_test_csr_no_san()

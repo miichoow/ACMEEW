@@ -47,6 +47,7 @@ class AcmeProxyBackend(CABackend):
         self._proxy = ca_settings.acme_proxy
         self._client: Any = None
         self._handler: Any = None
+        self._identifier_cls: Any = None
         self._lock = threading.Lock()
 
     def startup_check(self) -> None:  # noqa: PLR0912
@@ -97,10 +98,12 @@ class AcmeProxyBackend(CABackend):
 
         # Initialise ACMEOW client
         try:
-            from acmeow import AcmeClient  # noqa: PLC0415
+            from acmeow import AcmeClient, Identifier  # noqa: PLC0415
         except ImportError as exc:
             msg = "ACMEOW is not installed. Install with: pip install acmeow"
             raise CAError(msg) from exc
+
+        self._identifier_cls = Identifier
 
         try:
             self._init_acme_client(AcmeClient, storage)
@@ -228,7 +231,7 @@ class AcmeProxyBackend(CABackend):
 
     def _execute_upstream_flow(
         self,
-        identifiers: list[str],
+        identifiers: list[tuple[str, str]],
         csr_der: bytes,
     ) -> str:
         """Run the full upstream ACME order-challenge-finalize flow.
@@ -236,7 +239,7 @@ class AcmeProxyBackend(CABackend):
         Parameters
         ----------
         identifiers:
-            Domain names or IP addresses for the order.
+            List of ``(type, value)`` tuples (``"dns"`` or ``"ip"``).
         csr_der:
             DER-encoded certificate signing request.
 
@@ -246,12 +249,19 @@ class AcmeProxyBackend(CABackend):
             PEM-encoded certificate chain from the upstream CA.
 
         """
+        acme_ids = [
+            self._identifier_cls.dns(value)
+            if id_type == "dns"
+            else self._identifier_cls.ip(value)
+            for id_type, value in identifiers
+        ]
+
         # 1. Create order with the upstream CA
         log.info(
             "ACME proxy: creating order for %d identifier(s)",
-            len(identifiers),
+            len(acme_ids),
         )
-        self._client.create_order(identifiers)
+        self._client.create_order(acme_ids)
 
         # 2. Complete challenges via the configured handler
         log.info(
@@ -353,8 +363,12 @@ class AcmeProxyBackend(CABackend):
     @staticmethod
     def _extract_identifiers(
         csr: x509.CertificateSigningRequest,
-    ) -> list[str]:
-        """Extract domain names and IPs from the CSR SAN extension."""
+    ) -> list[tuple[str, str]]:
+        """Extract domain names and IPs from the CSR SAN extension.
+
+        Returns a list of ``(type, value)`` tuples where *type* is
+        ``"dns"`` or ``"ip"``.
+        """
         from cryptography.x509 import (  # noqa: PLC0415
             DNSName,
             ExtensionNotFound,
@@ -362,7 +376,7 @@ class AcmeProxyBackend(CABackend):
         )
         from cryptography.x509.oid import ExtensionOID  # noqa: PLC0415
 
-        identifiers: list[str] = []
+        identifiers: list[tuple[str, str]] = []
         try:
             san = csr.extensions.get_extension_for_oid(
                 ExtensionOID.SUBJECT_ALTERNATIVE_NAME,
@@ -372,9 +386,9 @@ class AcmeProxyBackend(CABackend):
 
         for name in san.value:  # type: ignore[attr-defined]
             if isinstance(name, DNSName):
-                identifiers.append(name.value)
+                identifiers.append(("dns", name.value))
             elif isinstance(name, IPAddress):
-                identifiers.append(str(name.value))
+                identifiers.append(("ip", str(name.value)))
 
         return identifiers
 

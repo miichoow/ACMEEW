@@ -310,6 +310,11 @@ class OrderService:
             authz_ids = self._orders.find_authorization_ids(
                 existing.id,
             )
+            # If auto_accept and the dedup order is still PENDING,
+            # upgrade its authzs/challenges and transition to READY.
+            if auto_accept and existing.status == OrderStatus.PENDING:
+                self._upgrade_to_auto_accepted(existing.id, authz_ids)
+                existing = replace(existing, status=OrderStatus.READY)
             return existing, authz_ids
 
         order_id = uuid4()
@@ -406,6 +411,34 @@ class OrderService:
             )
 
         return order, authz_ids
+
+    def _upgrade_to_auto_accepted(
+        self,
+        order_id: UUID,
+        authz_ids: list[UUID],
+    ) -> None:
+        """Upgrade a dedup-matched PENDING order to READY via auto-accept.
+
+        Transitions all PENDING authzs to VALID, bulk-validates their
+        challenges, and moves the order to READY.
+        """
+        for authz_id in authz_ids:
+            self._authz.transition_status(
+                authz_id,
+                AuthorizationStatus.PENDING,
+                AuthorizationStatus.VALID,
+            )
+            self._challenges.auto_accept_by_authorization(authz_id)
+
+        self._orders.transition_status(
+            order_id,
+            OrderStatus.PENDING,
+            OrderStatus.READY,
+        )
+        log.info(
+            "Auto-accept: upgraded dedup order %s to READY",
+            order_id,
+        )
 
     def create_renewal_order(
         self,

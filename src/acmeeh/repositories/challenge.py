@@ -93,6 +93,26 @@ class ChallengeRepository(BaseRepository[Challenge]):
         """Return all challenges for a given authorization."""
         return self.find_by({"authorization_id": authz_id})
 
+    def auto_accept_by_authorization(self, authz_id: UUID) -> int:
+        """Bulk-transition all pending challenges for an authorization to valid.
+
+        Sets ``validated_at = now()`` and clears any locks.
+        Returns the number of challenges updated.
+        """
+        db = Database.get_instance()
+        return db.execute(
+            "UPDATE challenges "
+            "SET status = %s, validated_at = now(), "
+            "    locked_by = NULL, locked_at = NULL "
+            "WHERE authorization_id = %s "
+            "  AND status = %s",
+            (
+                ChallengeStatus.VALID.value,
+                authz_id,
+                ChallengeStatus.PENDING.value,
+            ),
+        )
+
     def claim_for_processing(
         self,
         challenge_id: UUID,

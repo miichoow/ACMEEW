@@ -98,12 +98,13 @@ class AcmeProxyBackend(CABackend):
 
         # Initialise ACMEOW client
         try:
-            from acmeow import AcmeClient, Identifier  # noqa: PLC0415
+            from acmeow import AcmeClient, ChallengeType, Identifier  # noqa: PLC0415
         except ImportError as exc:
             msg = "ACMEOW is not installed. Install with: pip install acmeow"
             raise CAError(msg) from exc
 
         self._identifier_cls = Identifier
+        self._challenge_type = ChallengeType(self._proxy.challenge_type)
 
         try:
             self._init_acme_client(AcmeClient, storage)
@@ -270,7 +271,7 @@ class AcmeProxyBackend(CABackend):
         )
         self._client.complete_challenges(
             self._handler,
-            challenge_type=self._proxy.challenge_type,
+            challenge_type=self._challenge_type,
         )
 
         # 3. Finalise with the external CSR (ACMEOW v1.1.0)

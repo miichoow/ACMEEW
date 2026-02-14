@@ -287,6 +287,7 @@ class TestSign:
         backend._client = mock_client
         backend._handler = MagicMock()
         backend._identifier_cls = MagicMock()
+        backend._challenge_type = "dns-01"
 
         csr = _make_test_csr(["example.com", "www.example.com"])
         result = backend.sign(csr, profile=profile, validity_days=90)
@@ -311,6 +312,7 @@ class TestSign:
         backend._client = mock_client
         backend._handler = MagicMock()
         backend._identifier_cls = MagicMock()
+        backend._challenge_type = "dns-01"
 
         csr = _make_test_csr()
         with pytest.raises(CAError, match="Upstream ACME error"):
@@ -326,6 +328,7 @@ class TestSign:
         backend._client = mock_client
         backend._handler = MagicMock()
         backend._identifier_cls = MagicMock()
+        backend._challenge_type = "dns-01"
 
         csr = _make_test_csr(["example.com"])
         backend.sign(csr, profile=profile, validity_days=90)

@@ -451,6 +451,7 @@ class TestSignFull:
         backend._client = mock_client
         backend._handler = MagicMock()
         backend._identifier_cls = MagicMock()
+        backend._challenge_type = "dns-01"
 
         csr = _make_test_csr(["test.example.com"])
         result = backend.sign(csr, profile=profile, validity_days=90)
@@ -471,6 +472,7 @@ class TestSignFull:
         backend._client = mock_client
         backend._handler = MagicMock()
         backend._identifier_cls = MagicMock()
+        backend._challenge_type = "dns-01"
 
         csr = _make_test_csr()
         with pytest.raises(CAError, match="upstream CA problem"):
@@ -485,6 +487,7 @@ class TestSignFull:
         backend._client = mock_client
         backend._handler = MagicMock()
         backend._identifier_cls = MagicMock()
+        backend._challenge_type = "dns-01"
 
         csr = _make_test_csr()
         with pytest.raises(CAError) as exc_info:
@@ -501,6 +504,7 @@ class TestSignFull:
         backend._client = mock_client
         backend._handler = MagicMock()
         backend._identifier_cls = MagicMock()
+        backend._challenge_type = "dns-01"
 
         csr = _make_test_csr()
         with pytest.raises(CAError) as exc_info:
@@ -533,6 +537,7 @@ class TestExecuteUpstreamFlow:
         backend._client = mock_client
         backend._handler = mock_handler
         backend._identifier_cls = mock_identifier_cls
+        backend._challenge_type = "dns-01"
 
         identifiers = [("dns", "example.com"), ("dns", "www.example.com")]
         csr_der = b"\x30\x00"  # dummy DER
